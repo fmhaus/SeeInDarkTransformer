@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from models.sony_images import sid_original, dataset
+from models.sony_images import sid_original, sid_bottleneck_transformer, dataset
 from util import image_util, file_storage
 import cv2
 
@@ -18,18 +18,16 @@ if __name__ == '__main__':
     opt = options.Options().init(argparse.ArgumentParser()).parse_args()
     
     process_to_file = False
-    result_folder = 'E:/workspace/Bach/Bach300/SID2/sid_original_out_crop/'
+    result_folder = 'E:/workspace/Bach/Bach300/SID2/sid_original_out/'
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
-    print(opt)
-
-    if opt.use_s3_storage:
-        userdata = file_storage.JsonUserdata('./s3_access.json')
-        object_storage = file_storage.S3ObjectStorage(userdata)
 
     # Model
     model = sid_original.Model()
-    model.load_pretrained()
+    model.load_state()
+    #model = sid_bottleneck_transformer.Model()
+    #model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial.pt')
+    
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,7 +40,6 @@ if __name__ == '__main__':
         test_list = list(line.split(' ') for line in fr.readlines())
         
     dataset_test = dataset.RawImageDataset(test_list, opt.dataset_folder, opt.preprocess_folder, give_meta=True)
-    dataset_test.transform = image_util.AugmentSequentiel(image_util.AugmentTranslatePad(0.4), image_util.augment_mirror)
     
     dataloader_test = DataLoader(
         dataset_test, 

@@ -27,7 +27,7 @@ class TransformerBlock(nn.Module):
         
         self.apply(self._init_weights)
     
-    # Truncation normal initialization, overkill probably
+    # Truncation normal initialization
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             nn.init.trunc_normal_(m.weight, std=0.02)
@@ -49,6 +49,71 @@ class TransformerBlock(nn.Module):
         
         return x
 
+class TransformerBottleneck(nn.Module):
+    def __init__(self, n_transformer_blocks, in_channels, dim_model):
+        super(TransformerBottleneck, self).__init__()
+        
+        self.down = nn.Conv2d(in_channels, dim_model, 2, stride=2)
+        
+        self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((45, 67), dim_model), persistent=False)
+        
+        self.blocks = []
+        for _ in range(n_transformer_blocks):
+            self.blocks.append(TransformerBlock(dim_model, 4))
+        
+        self.conv = nn.Conv2d(dim_model, in_channels, 1, padding='same')
+        
+        self.up = nn.ConvTranspose2d(in_channels, in_channels, 2, stride=2)
+    
+    def forward(self, x):
+        # need padding for odd dimension
+        _, _, h, w = x.shape
+        down = self.down(self.pad_to_even(x))
+        down_shape = down.shape
+        
+        # transform to transformer shape
+        embeddings = down.flatten(2).transpose(1, 2)
+        embeddings = embeddings + self.pos_embeddings
+        # [N, 45*67, 256]
+        
+        for block in self.blocks:
+            embeddings = block(embeddings)
+        
+        # return to conv shape
+        reshaped = embeddings.transpose(1, 2).reshape(down_shape)
+        conv = self.conv(reshaped)
+        up = self.up(conv)
+        return self.crop_like(up, (h, w))
+    
+    def pad_to_even(self, x):
+        _, _, H, W = x.shape
+        pad_h = H & 1
+        pad_w = W & 1
+        
+        return F.pad(x, (0, pad_w, 0, pad_h), "replicate")
+    
+    def crop_like(self, x, size):
+       return x[..., :size[0], :size[1]]
+   
+    def create_positional_embeddings_1D(self, window_size, dim_model):
+        pos = torch.arange(window_size, dtype=torch.float32).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, dim_model, 2, dtype=torch.float) * (-math.log(10000.0) / dim_model))
+        
+        pos_embeds = torch.empty(window_size, dim_model)
+        pos_embeds[:, 0::2] = torch.sin(pos * div_term)
+        pos_embeds[:, 1::2] = torch.cos(pos * div_term)
+        
+        return pos_embeds
+    
+    def create_positional_embeddings_2D(self, dimensions, dim_model):
+        h, w = dimensions
+        d = dim_model // 2
+        
+        row_embeds = self.create_positional_embeddings_1D(h, d).unsqueeze(1)
+        col_embeds = self.create_positional_embeddings_1D(w, d).unsqueeze(0)
+        
+        return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2).view(h*w, dim_model)
+
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
@@ -68,16 +133,7 @@ class Model(nn.Module):
         self.conv4_1 = nn.Conv2d(128, 256, 3, padding='same')
         self.conv4_2 = nn.Conv2d(256, 256, 3, padding='same')
         
-        self.down5 = nn.Conv2d(256, 256, 2, stride=2)
-        
-        self.register_buffer('pos_embed5', self.create_positional_embeddings_2D((45, 67), 256), persistent=False)
-        
-        self.transformer5_1 = TransformerBlock(256, 4)
-        self.transformer5_2 = TransformerBlock(256, 4)
-        self.transformer5_3 = TransformerBlock(256, 4)
-        #self.transformer5_4 = TransformerBlock(256, 4)
-        
-        self.up5 = nn.ConvTranspose2d(256, 256, 2, stride=2)
+        self.bottleneck5 = TransformerBottleneck(4, 256, 256)
                 
         self.up6 = nn.ConvTranspose2d(512, 256, 2, stride=2, bias=False)
         self.conv6_1 = nn.Conv2d(512, 256, 3, padding='same')
@@ -98,7 +154,7 @@ class Model(nn.Module):
         self.conv10 = nn.Conv2d(32, 12, 1, padding='same')
     
     def forward(self, x):
-        _N, C, H, W = x.shape
+        _, C, H, W = x.shape
         assert C == 4 and H == 1424 and W == 2128
         # [N, 4, 1424, 2128]
         
@@ -122,29 +178,12 @@ class Model(nn.Module):
         pool4 = self.max_pool(conv4)
         # [N, 256, 89, 133]
         
-        # need padding for odd dimension
-        _, _, h5, w5 = pool4.shape
-        down5 = self.down5(self.pad_to_even(pool4))
-        down5_shape = down5.shape
-        
-        # transform to transformer shape
-        embed5 = down5.flatten(2).transpose(1, 2)
-        embed5 = embed5 + self.pos_embed5
-        # [N, 45*67, 256]
-        
-        embed5 = self.transformer5_1(embed5)
-        embed5 = self.transformer5_2(embed5)
-        embed5 = self.transformer5_3(embed5)
-        #embed5 = self.transformer5_4(embed5)
-        
-        # return to conv shape
-        up5 = self.up5(embed5.transpose(1, 2).reshape(down5_shape))
-        up5 = self.crop_like(up5, (h5, w5))
+        bottleneck5 = self.bottleneck5(pool4)
         
         # adding a skip connection around the transformer bottleneck
         # Im unsure about this one because it can cause the model to just ignore transformer features 
         # and only rely on the skip connection
-        out5 = torch.cat((up5, pool4), dim=1)
+        out5 = torch.cat((bottleneck5, pool4), dim=1)
         # [N, 256, 89, 133]
            
         up6 = torch.cat((self.up6(out5), conv4), dim = 1)
@@ -172,37 +211,6 @@ class Model(nn.Module):
         
         # depth_to_space in pytorch
         return image_util.depth_to_space(conv10, 2)
-
-    def pad_to_even(self, x):
-        _N, _C, H, W = x.shape
-        pad_h = H & 1
-        pad_w = W & 1
         
-        return F.pad(x, (0, pad_w, 0, pad_h), "replicate")
-    
-    def crop_like(self, x, size):
-       _N, _C, H, W = x.shape
-       return x[..., :size[0], :size[1]]
-
-    def create_positional_embeddings_1D(self, window_size, dim_model):
-        pos = torch.arange(window_size, dtype=torch.float32).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, dim_model, 2, dtype=torch.float) * (-math.log(10000.0) / dim_model))
-        
-        pos_embeds = torch.empty(window_size, dim_model)
-        pos_embeds[:, 0::2] = torch.sin(pos * div_term)
-        pos_embeds[:, 1::2] = torch.cos(pos * div_term)
-        
-        return pos_embeds
-    
-    def create_positional_embeddings_2D(self, dimensions, dim_model):
-        h, w = dimensions
-        d = dim_model // 2
-        
-        row_embeds = self.create_positional_embeddings_1D(h, d).unsqueeze(1)
-        col_embeds = self.create_positional_embeddings_1D(w, d).unsqueeze(0)
-        
-        return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2).view(h*w, dim_model)
-        
-    
-    def load_pretrained(self, file):
-        self.load_state_dict(torch.load(file, weights_only=True))
+    def load_state(self, path):
+        self.load_state_dict(torch.load(path, weights_only=True))

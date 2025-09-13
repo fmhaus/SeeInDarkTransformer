@@ -142,5 +142,5 @@ class Model(torch.nn.Module):
         return F.pixel_shuffle(conv10, 2)
     """
 
-    def load_pretrained(self):
-        self.load_state_dict(torch.load('./models/sony_images/states/sid_original_trained.pt', weights_only=True))
+    def load_state(self, path='./models/sony_images/states/sid_original.pt'):
+        self.load_state_dict(torch.load(path, weights_only=True))

@@ -10,7 +10,7 @@ activations_file = 'E:/workspace/Bach/Bach300/Learning-to-See-in-the-Dark/layer_
 activations = np.load(activations_file)
 
 model = sid_original.Model()
-model.load_pretrained()
+model.load_state()
 
 raw = rawpy.imread(in_image_file)
 ratio = 250

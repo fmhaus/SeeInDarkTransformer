@@ -41,16 +41,45 @@ if __name__ == '__main__':
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    # freeze encoder
-    if opt.freeze_encoder:
-        for name, param in model.named_parameters():
-            if name.startswith('conv1_') or name.startswith('conv2_') or name.startswith('conv3_') or name.startswith('conv4_'):
-                param.requires_grad = False
-        print('Encoder (conv1-4) frozen.')
-
     # Optimizer
-    params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = torch.optim.AdamW(params, lr=opt.lr_initial, weight_decay=opt.weight_decay)
+    encoder_params = []
+    bottleneck_params = []
+    decoder_params = []
+    for name, param in model.named_parameters():
+        if name.startswith('conv1_') or name.startswith('conv2_') or name.startswith('conv3_') or name.startswith('conv4_'):
+            encoder_params.append(param)
+        elif name.startswith('bottleneck5'):
+            bottleneck_params.append(param)
+        elif name.startswith('up') or name.startswith('conv'):
+            decoder_params.append(param)
+        else:
+            raise RuntimeError(f'Unaccounted model parameters: {name}')
+    
+    optimizer_params = []
+
+    if opt.encoder_train_factor > 0:
+        optimizer_params.append({
+            'params': encoder_params,
+            'lr': opt.lr_initial * opt.encoder_train_factor,
+            'weight_decay': opt.weight_decay
+        })
+    else:
+        for param in encoder_params:
+            param.reguires_grad = False
+        print('Encoder frozen.')
+    
+    optimizer_params.append({
+            'params': bottleneck_params,
+            'lr': opt.lr_initial,
+            'weight_decay': opt.weight_decay
+        })
+    optimizer_params.append({
+            'params': decoder_params,
+            'lr': opt.lr_initial,
+            'weight_decay': opt.weight_decay
+        })
+
+    optimizer = torch.optim.AdamW(optimizer_params)
     if opt.auto_mixed_precision:
         print('Auto mixed precision enabled.')
         scaler = torch.amp.GradScaler()
@@ -98,7 +127,7 @@ if __name__ == '__main__':
     else:
         start_epoch = 0
         lr_schedule_first_epoch = 0
-        model.load_pretrained('./models/sony_images/states/bottleneck_transformer_initial.pt')
+        model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial.pt')
         
         print(f'Starting in epoch 1.')
     
@@ -181,7 +210,7 @@ if __name__ == '__main__':
         log['epoch'] = epoch_number
         log['lr_schedule_first_epoch'] = lr_schedule_first_epoch
         log['learning_rate'] = optimizer.param_groups[0]['lr']
-        log['encoder_frozen'] = opt.freeze_encoder
+        log['encoder_train_factor'] = opt.encoder_train_factor
         log['auto_mixed_precision'] = opt.auto_mixed_precision
         log['augment_images'] = augment_images
         
@@ -228,7 +257,7 @@ if __name__ == '__main__':
                     optimizer.step()
     
                 optimizer.zero_grad()
-                gradient_acc == 0
+                gradient_acc = 0
         
         # handle accumulated gradients after last update
         if gradient_acc != 0:
@@ -256,8 +285,6 @@ if __name__ == '__main__':
         with torch.no_grad():
             for batch_idx, (in_images, gt_images) in enumerate(tqdm(dataloader_val, f"Validation epoch {epoch_number}")):
                 batch_size = in_images.shape[0]
-                if batch_idx == 4:
-                    break
                 
                 in_images = in_images.to(device, non_blocking=True)
                 gt_images = gt_images.to(device, non_blocking=True)
