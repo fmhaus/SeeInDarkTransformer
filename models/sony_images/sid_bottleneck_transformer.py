@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 import math
 from util import image_util
 
@@ -71,7 +70,7 @@ class Model(nn.Module):
         
         self.down5 = nn.Conv2d(256, 256, 2, stride=2)
         
-        self.register_buffer('pos_embed5', self.create_positional_embeddings(45*67, 256), persistent=False)
+        self.register_buffer('pos_embed5', self.create_positional_embeddings_2D((45, 67), 256), persistent=False)
         
         self.transformer5_1 = TransformerBlock(256, 4)
         self.transformer5_2 = TransformerBlock(256, 4)
@@ -171,8 +170,8 @@ class Model(nn.Module):
         conv10 = self.conv10(conv9)
         # [N, 12, 1424, 2128]
         
+        # depth_to_space in pytorch
         return image_util.depth_to_space(conv10, 2)
-        # return F.pixel_shuffle(conv10, 2)
 
     def pad_to_even(self, x):
         _N, _C, H, W = x.shape
@@ -185,7 +184,7 @@ class Model(nn.Module):
        _N, _C, H, W = x.shape
        return x[..., :size[0], :size[1]]
 
-    def create_positional_embeddings(self, window_size, dim_model):
+    def create_positional_embeddings_1D(self, window_size, dim_model):
         pos = torch.arange(window_size, dtype=torch.float32).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, dim_model, 2, dtype=torch.float) * (-math.log(10000.0) / dim_model))
         
@@ -195,55 +194,15 @@ class Model(nn.Module):
         
         return pos_embeds
     
+    def create_positional_embeddings_2D(self, dimensions, dim_model):
+        h, w = dimensions
+        d = dim_model // 2
+        
+        row_embeds = self.create_positional_embeddings_1D(h, d).unsqueeze(1)
+        col_embeds = self.create_positional_embeddings_1D(w, d).unsqueeze(0)
+        
+        return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2).view(h*w, dim_model)
+        
+    
     def load_pretrained(self, file):
         self.load_state_dict(torch.load(file, weights_only=True))
-        
-import rawpy
-import cv2
-import torchprofile
-
-def pack_raw(raw):
-    # pack Bayer image to 4 channels
-    im = raw.raw_image_visible.astype(np.float32)
-    im = np.maximum(im - 512, 0) / (16383 - 512)  # subtract the black level
-    
-    im = np.expand_dims(im, axis=0)
-    img_shape = im.shape
-    H = img_shape[1]
-    W = img_shape[2]
-         
-    out = np.concatenate((im[:, 0:H:2, 0:W:2],
-                            im[:, 0:H:2, 1:W:2],
-                            im[:, 1:H:2, 1:W:2],
-                            im[:, 1:H:2, 0:W:2]), axis=0)
-    return out
-
-def get_model_input(raw, ratio):
-    packed = pack_raw(raw)
-    return torch.from_numpy(packed) * ratio
-
-if __name__ == "__main__":
-    model = Model()
-    model.eval()
-
-    print(sum(param.numel() for param in model.parameters()))
-
-    path = "E:/workspace/Bach/Bach300/Learning-to-See-in-the-Dark/dataset/Sony/short/10016_00_0.04s.ARW"
-    ratio = 100
-    
-    def count_macs(tensor):
-        return torchprofile.profile_macs(model, tensor)
-
-    with torch.no_grad():
-        raw =  rawpy.imread(path)
-        input_full = torch.from_numpy(pack_raw(raw)).unsqueeze(0) * ratio
-        
-        output = model(input_full)
-        output = (255.0 * output.clip(0.0, 1.0).squeeze()).to(torch.uint8).permute(1, 2, 0)
-
-        image_bgr = np.flip(output.numpy(), axis=2)
-        H, W = image_bgr.shape[:2]
-        image_bgr = cv2.resize(image_bgr, (W // 4, H // 4), interpolation=cv2.INTER_NEAREST)
-        
-        cv2.imshow(f"sid_transformer_bottleneck output: {path}", image_bgr)
-        cv2.waitKey()

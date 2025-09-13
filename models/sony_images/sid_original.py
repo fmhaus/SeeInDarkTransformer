@@ -144,30 +144,3 @@ class Model(torch.nn.Module):
 
     def load_pretrained(self):
         self.load_state_dict(torch.load('./models/sony_images/states/sid_original_trained.pt', weights_only=True))
-
-
-import rawpy
-import cv2
-from models.sony_images import dataset
-
-if __name__ == "__main__":
-    model = Model()
-    model.load_pretrained()
-    model.eval()
-
-    path = "E:/workspace/Bach/Bach300/Learning-to-See-in-the-Dark/dataset/Sony/short/10016_00_0.04s.ARW"
-    ratio = 100
-
-    with torch.no_grad():
-        raw =  rawpy.imread(path)
-        input_full = dataset.pack_raw(raw, ratio).unsqueeze(0)
-        
-        output = model(input_full)
-        output = (255.0 * output.clip(0.0, 1.0).squeeze()).to(torch.uint8).permute(1, 2, 0)
-
-        image_bgr = np.flip(output.numpy(), axis=2)
-        H, W = image_bgr.shape[:2]
-        image_bgr = cv2.resize(image_bgr, (W // 4, H // 4), interpolation=cv2.INTER_NEAREST)
-        
-        cv2.imshow(f"sid_original model output: {path}", image_bgr)
-        cv2.waitKey()
