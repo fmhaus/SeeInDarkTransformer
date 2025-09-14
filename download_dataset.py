@@ -1,5 +1,6 @@
 import requests
 import os
+from tqdm import tqdm
 
 DATASET_PATH = './../dataset/'
 
@@ -28,7 +29,7 @@ def save_response_content(response, destination):
     CHUNK_SIZE = 32768
 
     with open(destination, "wb") as f:
-        for chunk in response.iter_content(CHUNK_SIZE):
+        for chunk in tqdm(response.iter_content(CHUNK_SIZE), 'Downloading...'):
             if chunk: # filter out keep-alive new chunks
                 f.write(chunk)
 
@@ -36,12 +37,14 @@ def download_sony():
     os.makedirs(DATASET_PATH)
     zip_file = os.path.join(DATASET_PATH, 'Sony.zip')
     download_file_from_google_drive('10kpAcvldtcb9G2ze5hTcF1odzu4V_Zvh', zip_file)
+    print('Unzipping...')
     os.system(f'unzip {zip_file} -d {DATASET_PATH}')
 
 def download_fuji():
     os.makedirs(DATASET_PATH)
     zip_file = os.path.join(DATASET_PATH, 'Fuji.zip')
     download_file_from_google_drive('12hvKCjwuilKTZPe9EZ7ZTb-azOmUA3HT', zip_file)
+    print('Unzipping...')
     os.system(f'unzip {zip_file} -d {DATASET_PATH}')
     
 download_sony()
