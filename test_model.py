@@ -23,7 +23,7 @@ if __name__ == '__main__':
     result_folder = './../processed/sid_no_bottleneck/'
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
-    print(f"CPU count is {os.cpu_count()}")
+    print(f"CPU core count is {os.cpu_count()}")
 
     # Model
     model = sid_no_bottleneck.Model()

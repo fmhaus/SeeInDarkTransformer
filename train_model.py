@@ -20,7 +20,7 @@ if __name__ == '__main__':
     opt = options.Options().init(argparse.ArgumentParser()).parse_args()
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
-    print(f"CPU count is {os.cpu_count()}")
+    print(f"CPU core count is {os.cpu_count()}")
     print(opt)
 
     if opt.use_s3_storage:
