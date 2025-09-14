@@ -5,24 +5,24 @@ import math
 from PIL import Image, ImageTk, ImageDraw
 
 DIRS = [
-    "processed/Sony/short",
-    "processed/Sony/short_linear_enhance",
-    "processed/Sony/short_model_cnn_enhance",
-    "processed/Sony/long"
+    "E:/workspace/Bach/Bach300/SID2/processed/Sony/long",
+    "E:/workspace/Bach/Bach300/SID2/processed/Sony/short_linear_enhance",
+    "E:/workspace/Bach/Bach300/SID2/processed/Sony/sid_original",
+    "E:/workspace/Bach/Bach300/SID2/processed/Sony/sid_no_bottleneck"
 ]
 LABELS = [
-    "Raw",
-    "Linear Enhanced",
+    "Long exposure",
+    "Short exposure (linear enhanced)",
     "Learning to See in the Dark (2018)",
-    "Ground Truth",
+    "Learning to See in the Dark (no bottleneck)",
 ]
 
-GROUND_TRUTH_INDEX = 3
+GROUND_TRUTH_INDEX = 0
 CALCULATE_COMPARISON = [
     False, 
     True,
     True,
-    False
+    True
 ]
 
 FILE_PREFIX_LEN = 8
