@@ -16,13 +16,6 @@ from util import image_util, file_storage
 import argparse
 import options
 
-try:
-    from google.colab import drive
-    drive.mount('/content/drive')
-    print('Google Drive available.')
-except ModuleNotFoundError:
-    print('Google Drive unavailable.')
-
 if __name__ == '__main__':
     opt = options.Options().init(argparse.ArgumentParser()).parse_args()
     
