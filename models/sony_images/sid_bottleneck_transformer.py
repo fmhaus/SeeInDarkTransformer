@@ -6,7 +6,7 @@ from util import image_util
 
 class TransformerBlock(nn.Module):
     def __init__(self, dim_model, n_heads, dim_ff=None, dropout_attn=0.1, dropout_mlp=0.1):
-        super(TransformerBlock, self).__init__()
+        super().__init__()
         
         dim_ff = dim_ff or 4 * dim_model
         
@@ -51,15 +51,13 @@ class TransformerBlock(nn.Module):
 
 class TransformerBottleneck(nn.Module):
     def __init__(self, n_transformer_blocks, in_channels, dim_model):
-        super(TransformerBottleneck, self).__init__()
+        super().__init__()
         
         self.down = nn.Conv2d(in_channels, dim_model, 2, stride=2)
         
         self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((45, 67), dim_model), persistent=False)
         
-        self.blocks = []
-        for _ in range(n_transformer_blocks):
-            self.blocks.append(TransformerBlock(dim_model, 4))
+        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4) for _ in range(n_transformer_blocks)])
         
         self.conv = nn.Conv2d(dim_model, in_channels, 1, padding='same')
         
@@ -116,7 +114,7 @@ class TransformerBottleneck(nn.Module):
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         
         self.lrelu = nn.LeakyReLU(negative_slope=0.2)
         self.max_pool = nn.MaxPool2d(2)

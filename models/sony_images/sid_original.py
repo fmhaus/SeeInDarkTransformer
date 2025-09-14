@@ -5,7 +5,7 @@ from util import image_util
 
 class Model(torch.nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         
         self.lrelu = nn.LeakyReLU(negative_slope=0.2)
         self.max_pool = nn.MaxPool2d(2)
