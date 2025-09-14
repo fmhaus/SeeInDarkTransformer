@@ -1,7 +1,6 @@
 import random
 import torch
 import torch.nn.functional as F
-import numpy as np
 import math
 
 def augment_mirror(item):

@@ -5,10 +5,10 @@ import math
 from PIL import Image, ImageTk, ImageDraw
 
 DIRS = [
-    "E:/workspace/Bach/Bach300/SID2/processed/Sony/long",
-    "E:/workspace/Bach/Bach300/SID2/processed/Sony/short_linear_enhance",
-    "E:/workspace/Bach/Bach300/SID2/processed/Sony/sid_original",
-    "E:/workspace/Bach/Bach300/SID2/processed/Sony/sid_no_bottleneck"
+    "./../processed/Sony/long",
+    "./../processed/Sony/short_linear_enhance",
+    "./../processed/Sony/sid_original",
+    "./../processed/Sony/sid_no_bottleneck"
 ]
 LABELS = [
     "Long exposure",
@@ -206,7 +206,7 @@ class QuadViewer:
 
             if view:
                 
-                # compute crop
+                # Compute crop
                 viewport_w = view.image.width / self.zoom
                 viewport_h = view.image.height / self.zoom
                 cx, cy = self.crop_center
@@ -239,7 +239,7 @@ class QuadViewer:
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, anchor="nw", image=self.tk_img)
 
-        self.root.title(f"Quad {self.scene_index + 1}/{len(self.scenes)} {self.zoom:.2f}X")
+        self.root.title(f"View {self.scene_index + 1}/{len(self.scenes)} {self.zoom:.2f}X")
 
 
 if __name__ == "__main__":

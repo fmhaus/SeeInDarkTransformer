@@ -20,7 +20,7 @@ if __name__ == '__main__':
     process_to_file = True
     save_gt = False
     
-    result_folder = 'E:/workspace/Bach/Bach300/SID2/processed/Sony/sid_no_bottleneck/'
+    result_folder = './../processed/sid_no_bottleneck/'
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
 

@@ -4,8 +4,8 @@ import torch
 from PIL import Image
 from models.sony_images import sid_original, dataset
 
-in_image_file = 'E:/workspace/Bach/Bach300/Learning-to-See-in-the-Dark/dataset/Sony/short/10003_00_0.04s.ARW'
-activations_file = 'E:/workspace/Bach/Bach300/Learning-to-See-in-the-Dark/layer_activations_10003_00_250.npz'
+in_image_file = './../dataset/Sony/short/10003_00_0.04s.ARW'
+activations_file = './../layer_activations_10003_00_250.npz'
 
 activations = np.load(activations_file)
 
@@ -15,8 +15,6 @@ model.load_state()
 raw = rawpy.imread(in_image_file)
 ratio = 250
 in_image = torch.unsqueeze(dataset.pack_raw(raw, ratio), 0)
-
-#in_image = torch.from_numpy(np.load('E:/workspace/Bach/Bach300/Learning-to-See-in-the-Dark/out_in.npy')).permute((0, 3, 1, 2))
 
 with torch.no_grad():
     out = model(in_image)
