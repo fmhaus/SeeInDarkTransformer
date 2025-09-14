@@ -16,10 +16,18 @@ from util import image_util, file_storage
 import argparse
 import options
 
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    print('Google Drive available.')
+except ModuleNotFoundError:
+    print('Google Drive unavailable.')
+
 if __name__ == '__main__':
     opt = options.Options().init(argparse.ArgumentParser()).parse_args()
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
+    print(f"CPU count is {os.cpu_count()}")
     print(opt)
 
     if opt.use_s3_storage:
@@ -40,6 +48,7 @@ if __name__ == '__main__':
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f'Using device {'cuda' if torch.cuda.is_available() else 'cpu'}.')
     
     # Optimizer
     encoder_params = []

@@ -23,6 +23,7 @@ if __name__ == '__main__':
     result_folder = './../processed/sid_no_bottleneck/'
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
+    print(f"CPU count is {os.cpu_count()}")
 
     # Model
     model = sid_no_bottleneck.Model()
@@ -34,6 +35,7 @@ if __name__ == '__main__':
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device=device)
+    print(f'Using device {'cuda' if torch.cuda.is_available() else 'cpu'}.')
 
     # ---------- DataLoader ----------
     dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder)

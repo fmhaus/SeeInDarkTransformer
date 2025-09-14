@@ -3,8 +3,8 @@ class Options():
         pass
     
     def init(self, parser):
-        parser.add_argument('--lr_initial', type=float, default=1e-4, help='initial learning rate')
-        parser.add_argument('--weight_decay', type=float, default=0.05, help='weight decay')
+        parser.add_argument('--lr_initial', type=float, default=5e-4, help='initial learning rate')
+        parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay')
         parser.add_argument('--num_workers', type=int, default=4, help='number of workers for loading data')
         parser.add_argument('--batch_size', type=int, default=1, help='number of images processed simultaneously')
         parser.add_argument('--effective_batch_size', type=int, default=4, help='number of images processed before updating weights')
