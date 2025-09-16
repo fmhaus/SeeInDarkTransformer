@@ -235,9 +235,10 @@ if __name__ == '__main__':
             pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
             gt_images = gt_images.to(device, non_blocking=True)
             
-            packed = dataset.pack_raw(raw_images, pack_settings)
-            if dataset_train.transform is not None:
-                packed, gt_images = dataset_train.transform((packed, gt_images))
+            with torch.no_grad():
+                packed = dataset.pack_raw(raw_images, pack_settings)
+                if dataset_train.transform is not None:
+                    packed, gt_images = dataset_train.transform((packed, gt_images))
             
             if opt.auto_mixed_precision:
                 with torch.amp.autocast(device.type):
@@ -300,9 +301,10 @@ if __name__ == '__main__':
                 pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
                 gt_images = gt_images.to(device, non_blocking=True)
                 
-                packed = dataset.pack_raw(raw_images, pack_settings)
-                if dataset_val.transform is not None:
-                    packed, gt_images = dataset_val.transform((packed, gt_images))
+                with torch.no_grad():
+                    packed = dataset.pack_raw(raw_images, pack_settings)
+                    if dataset_val.transform is not None:
+                        packed, gt_images = dataset_val.transform((packed, gt_images))
                 
                 out_images = model(packed)
                 out_images = out_images.clip(0.0, 1.0)
