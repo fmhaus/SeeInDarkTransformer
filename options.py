@@ -17,8 +17,8 @@ class Options():
         parser.add_argument('--load_optimizer', type=bool, default=True, help='Whether to load the optimizer (and lr schedule) when using resume or not')
         parser.add_argument('--encoder_train_factor', type=float, default=1.0, help='The factor to train the encoder with (1: regular, 0: encoder frozen)')
         
-        parser.add_argument('--dataset_folder', type=str, default='./../../Learning-to-See-in-the-Dark/dataset', help='location of the downloaded and unzipped dataset')
-        parser.add_argument('--preprocess_folder', type=str, default='./../preprocessed_gts', help='location where preprocesses images are stored')
+        parser.add_argument('--dataset_folder', type=str, default='./../dataset', help='location of the downloaded and unzipped dataset')
+        parser.add_argument('--preprocess_folder', type=str, default='./../preprocess', help='location where preprocesses images are stored')
         parser.add_argument('--out_path', type=str, default='./../checkpoints', help='location where logs and checkpoints are stored')
         parser.add_argument('--save_checkpoint_frequency', type=int, default=1, help='After how many epochs the model and optimizer checkpoints should be saved')
 
