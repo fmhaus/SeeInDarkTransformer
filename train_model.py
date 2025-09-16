@@ -167,8 +167,8 @@ if __name__ == '__main__':
     with open('./data_lists/Sony_val_list.txt') as fr:
         val_list = list(line.split(' ') for line in fr.readlines())
     
-    dataset_train = dataset.RawImageDataset(train_list, opt.dataset_folder, opt.preprocess_folder)
-    dataset_val = dataset.RawImageDataset(val_list, opt.dataset_folder, opt.preprocess_folder)
+    dataset_train = dataset.RawImageDataset(train_list, opt.dataset_folder, opt.preprocess_folder, pack_augment_on_worker=False)
+    dataset_val = dataset.RawImageDataset(val_list, opt.dataset_folder, opt.preprocess_folder, pack_augment_on_worker=False)
 
     len_train_set = len(dataset_train)
     len_val_set = len(dataset_val)
@@ -185,7 +185,7 @@ if __name__ == '__main__':
 
     dataloader_val = DataLoader(
         dataset_val, 
-        batch_size=opt.batch_size, 
+        batch_size=opt.validation_batch_size, 
         shuffle=False, 
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 
@@ -202,7 +202,10 @@ if __name__ == '__main__':
         epoch_number = epoch_idx + 1
         
         if epoch_number >= opt.augment_images_epoch:
-            dataloader_train.transform = image_util.augment_image_data
+            dataloader_train.transform = image_util.AugmentSequentiel(
+                image_util.AugmentTranslateReflect(max_translate_factor=0.4, chance=0.75),
+                image_util.augment_mirror
+            )
             augment_images = True
         else:
             dataloader_train.transform = None
@@ -225,18 +228,23 @@ if __name__ == '__main__':
         
         time_begin = time.time()
         
-        for batch_idx, (in_images, gt_images) in enumerate(tqdm(dataloader_train, f"Training epoch {epoch_number}")):
-            batch_size = in_images.shape[0]
+        for batch_idx, ((raw_images, pack_settings), gt_images) in enumerate(tqdm(dataloader_train, f"Training epoch {epoch_number}")):
+            batch_size = raw_images.shape[0]
             
-            in_images = in_images.to(device, non_blocking=True)
+            raw_images = raw_images.to(device, non_blocking=True)
+            pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
             gt_images = gt_images.to(device, non_blocking=True)
+            
+            packed = dataset.pack_raw(raw_images, pack_settings)
+            if dataset_train.transform is not None:
+                packed, gt_images = dataset_train.transform((packed, gt_images))
             
             if opt.auto_mixed_precision:
                 with torch.amp.autocast(device.type):
-                    out_images = model(in_images)
+                    out_images = model(packed)
                     loss = criterion(out_images, gt_images)
             else:
-                out_images = model(in_images)
+                out_images = model(packed)
                 loss = criterion(out_images, gt_images)
                 
                 
@@ -285,13 +293,18 @@ if __name__ == '__main__':
         time_begin = time.time()
             
         with torch.no_grad():
-            for batch_idx, (in_images, gt_images) in enumerate(tqdm(dataloader_val, f"Validation epoch {epoch_number}")):
-                batch_size = in_images.shape[0]
+            for batch_idx, ((raw_images, pack_settings), gt_images) in enumerate(tqdm(dataloader_val, f"Validation epoch {epoch_number}")):
+                batch_size = raw_images.shape[0]
                 
-                in_images = in_images.to(device, non_blocking=True)
+                raw_images = raw_images.to(device, non_blocking=True)
+                pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
                 gt_images = gt_images.to(device, non_blocking=True)
                 
-                out_images = model(in_images)
+                packed = dataset.pack_raw(raw_images, pack_settings)
+                if dataset_val.transform is not None:
+                    packed, gt_images = dataset_val.transform((packed, gt_images))
+                
+                out_images = model(packed)
                 out_images = out_images.clip(0.0, 1.0)
                 
                 loss = criterion(out_images, gt_images)

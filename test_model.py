@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from models.sony_images import sid_original, sid_bottleneck_transformer, sid_no_bottleneck, dataset
+from models.sony_images import sid_original, sid_bottleneck_transformer, dataset
 from util import image_util
 import cv2
 
@@ -15,21 +15,21 @@ import options
 
 if __name__ == '__main__':
     
-    opt = options.Options().init(argparse.ArgumentParser()).parse_args()
-    
-    process_to_file = True
+    process_to_file = False
     save_gt = False
     
     result_folder = './../processed/sid_no_bottleneck/'
     
-    print(f"Time now: {datetime.datetime.now().isoformat()}")
-    print(f"CPU core count is {os.cpu_count()}")
-
     # Model
-    model = sid_no_bottleneck.Model()
+    model = sid_original.Model()
     model.load_state()
     #model = sid_bottleneck_transformer.Model()
     #model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial.pt')
+    
+    opt = options.Options().init(argparse.ArgumentParser()).parse_args()
+    
+    print(f"Time now: {datetime.datetime.now().isoformat()}")
+    print(f"CPU core count is {os.cpu_count()}")
     
 
     use_cuda = torch.cuda.is_available()
@@ -43,11 +43,13 @@ if __name__ == '__main__':
     with open('./data_lists/Sony_test_list_2.txt') as fr:
         test_list = list(line.split(' ') for line in fr.readlines())
         
-    dataset_test = dataset.RawImageDataset(test_list, opt.dataset_folder, opt.preprocess_folder, give_meta=True)
+        
+    dataset_test = dataset.RawImageDataset(test_list, opt.dataset_folder, opt.preprocess_folder, give_meta=True, pack_augment_on_worker=False)
+    dataset_test.transform = image_util.AugmentTranslateReflect(0.5)
     
     dataloader_test = DataLoader(
         dataset_test, 
-        batch_size=opt.batch_size, 
+        batch_size=opt.validation_batch_size, 
         shuffle=False, 
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 
@@ -60,15 +62,20 @@ if __name__ == '__main__':
     time_begin = time.time()
         
     with torch.no_grad():
-        for batch_idx, (in_images, gt_images, meta) in enumerate(tqdm(dataloader_test, f"Testing")):
-            batch_size = in_images.shape[0]
+        for batch_idx, ((raw_images, pack_settings), gt_images, meta) in enumerate(tqdm(dataloader_test, f"Testing")):
+            batch_size = raw_images.shape[0]
             ids = meta['id']
             ratios = meta['ratio']
             
-            in_images = in_images.to(device, non_blocking=True)
+            raw_images = raw_images.to(device, non_blocking=True)
+            pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
             gt_images = gt_images.to(device, non_blocking=True)
             
-            out_images = model(in_images)
+            packed = dataset.pack_raw(raw_images, pack_settings)
+            if dataset_test.transform is not None:
+                packed, gt_images = dataset_test.transform((packed, gt_images))
+            
+            out_images = model(packed)
             out_images = out_images.clip(0.0, 1.0)
             
             psnr = image_util.batch_psnr(out_images, gt_images)

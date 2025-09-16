@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
 import io
-import boto3
 import json
+
+import boto3
 
 class JsonUserdata:
     def __init__(self, file):
@@ -26,6 +27,7 @@ class S3ObjectStorage:
     def load_image(self, key):
         response = self.s3.get_object(Bucket=self.s3_bucket, Key=key)
         image_raw = np.frombuffer(response["Body"].read(), np.uint8)
+        # TODO: switch to PIL
         image = cv2.imdecode(image_raw, cv2.IMREAD_COLOR)
         return image
 

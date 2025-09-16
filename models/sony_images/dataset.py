@@ -1,9 +1,9 @@
 import torch
-import torch.nn.functional as F
 import numpy as np
 import os
 import rawpy
 from tqdm import tqdm
+from util.profiler import Profiler, DummyProfiler
 
 def preprocess_raw_gts(gt_folder, preprocessed_folder):
     os.makedirs(preprocessed_folder, exist_ok=True)
@@ -16,8 +16,7 @@ def preprocess_raw_gts(gt_folder, preprocessed_folder):
             tensor = np.permute_dims(np.float32(gt / 65535.0), axes=(2, 0, 1))
             np.save(npy_file, tensor)
 
-def pack_raw(raw, ratio):
-    im = raw.raw_image_visible.astype(np.float32)
+def pack_raw_old(im, ratio):
     im = np.maximum(im - 512, 0) / (16383 - 512)
     
     im = np.expand_dims(im, axis=0)
@@ -34,13 +33,44 @@ def pack_raw(raw, ratio):
     
     return torch.from_numpy(out)
 
+def get_pack_settings(raw, exposure_ratio):
+    return {
+        'black_level': torch.tensor(raw.black_level_per_channel, dtype=torch.float32),
+        'white_level': torch.tensor(raw.white_level, dtype=torch.float32).expand(4),
+        'exposure_ratio': torch.tensor(exposure_ratio, dtype=torch.float32).clamp(max=300)
+    }
+
+def pack_raw(raw_image, settings):
+    N, H_2, W_2 = raw_image.shape
+    H = H_2 // 2
+    W = W_2 // 2
+    
+    packed = torch.empty((N, 4, H, W), dtype=raw_image.dtype, device=raw_image.device)
+    packed[:, 0] = raw_image[:, 0::2, 0::2]
+    packed[:, 1] = raw_image[:, 0::2, 1::2]
+    packed[:, 2] = raw_image[:, 1::2, 1::2]
+    packed[:, 3] = raw_image[:, 1::2, 0::2]
+    
+    # match black and white level to [., C, ., .]
+    black_level = settings['black_level'].view(N, 4, 1, 1)
+    white_level = settings['white_level'].view(N, 4, 1, 1)
+    exposure_ratio = settings['exposure_ratio'].view(N, 1, 1, 1)
+    
+    normalized = (packed - black_level).clamp(min=0.0) / (white_level - black_level)
+    scaled = normalized * exposure_ratio
+    
+    return scaled.clamp(max=1.0)
+    
+
 class RawImageDataset(torch.utils.data.Dataset):
-    def __init__(self, set_list, dataset_folder, preprocessed_gt_folder, give_meta=False):
+    def __init__(self, set_list, dataset_folder, preprocessed_gt_folder, give_meta=False, pack_augment_on_worker=True, profiling=None):
         self.items = set_list
         self.dataset_folder = dataset_folder
         self.gt_folder = preprocessed_gt_folder
         self.transform = None
         self.give_meta = give_meta
+        self.pack_augment_on_worker = pack_augment_on_worker
+        self.profiling = profiling
     
     def __len__(self):
         return len(self.items)
@@ -55,17 +85,43 @@ class RawImageDataset(torch.utils.data.Dataset):
         gt_filename = os.path.basename(gt_name)
         gt_exposure = float(gt_filename[9:-5])
         
-        raw = rawpy.imread(in_file)
-        ratio = min(300, gt_exposure / in_exposure)
-        in_image = pack_raw(raw, ratio)
+        profiler = Profiler() if self.profiling is not None else DummyProfiler()
         
+        profiler.section('read_raw')
+        raw = rawpy.imread(in_file)
+        image_raw = torch.tensor(raw.raw_image_visible, dtype=torch.float32)
+        profiler.end_section()
+        
+        profiler.section('load_gt')
         gt_file = os.path.join(self.gt_folder, gt_filename + '.npy')
         gt_image = torch.from_numpy(np.load(gt_file, allow_pickle=True))
+        profiler.end_section()
         
-        if self.transform is not None:
-            in_image, gt_image = self.transform((in_image, gt_image))
+        pack_settings = get_pack_settings(raw, gt_exposure / in_exposure)
         
-        if self.give_meta:
-            return in_image, gt_image, {'id': in_filename[:8], 'ratio': ratio}
+        if self.pack_augment_on_worker:
+            with torch.no_grad():
+                profiler.section('pack_raw')
+                # pack_raw need batch dimension, unsqueeze before
+                image_raw = image_raw.unsqueeze(0)
+                input = pack_raw(image_raw, pack_settings)
+                profiler.end_section()
+                
+                profiler.section('augment')
+                if self.transform is not None:
+                    gt_image = gt_image.unsqueeze(0)
+                    input, gt_image = self.transform((input, gt_image))
+                    gt_image = gt_image.squeeze(0)
+                    
+                input = input.squeeze(0)
+                profiler.end_section()
+            
         else:
-            return in_image, gt_image
+            input = (image_raw, pack_settings)
+            
+        profiler.save_to_profiling(self.profiling)
+            
+        if self.give_meta:
+            return input, gt_image, {'id': in_filename[:8], 'ratio': pack_settings['exposure_ratio']}
+        else:
+            return input, gt_image

@@ -8,6 +8,7 @@ class Options():
         parser.add_argument('--num_workers', type=int, default=4, help='number of workers for loading data')
         parser.add_argument('--batch_size', type=int, default=1, help='number of images processed simultaneously')
         parser.add_argument('--effective_batch_size', type=int, default=4, help='number of images processed before updating weights')
+        parser.add_argument('--validation_batch_size', type=int, default=2, help='number of images processed simultaneously for validation')
         parser.add_argument('--resume_epoch', type=int, default=0, help='epoch to resume training from (0 = train from zero)')
         parser.add_argument('--total_epochs', type=int, default=200, help='toal number of epochs')
         parser.add_argument('--warmup_epochs', type=int, default=5, help='number of warmup epochs (0 = no warmup)')
