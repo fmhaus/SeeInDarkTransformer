@@ -134,6 +134,8 @@ if __name__ == '__main__':
         print(f'Starting in epoch 1.')
     
     model.to(device=device)
+    if opt.compile_model:
+        model.compile()
 
     # Scheduler
     warmup_scheduler = LinearLR(
