@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from tqdm import tqdm
 from models.sony_images import sid_bottleneck_transformer, dataset
-from util import image_util, file_storage
+from util import image_util, file_storage, profiler
 
 import argparse
 import options
@@ -217,6 +217,8 @@ if __name__ == '__main__':
 
     assert opt.effective_batch_size % opt.batch_size == 0
     gradient_acc_total_steps = opt.effective_batch_size // opt.batch_size
+    
+    profiler = profiler.Profiler()
 
     for epoch_idx in range(start_epoch, opt.total_epochs):
         epoch_number = epoch_idx + 1
@@ -247,7 +249,9 @@ if __name__ == '__main__':
         
         time_begin = time.time()
         
+        profiler.section('wait data (train)')
         for batch_idx, ((raw_images, pack_settings), gt_images) in enumerate(tqdm(dataloader_train, f"Training epoch {epoch_number}")):
+            profiler.end_section()
             batch_size = raw_images.shape[0]
             
             raw_images = raw_images.to(device, non_blocking=True)
@@ -255,10 +259,16 @@ if __name__ == '__main__':
             gt_images = gt_images.to(device, non_blocking=True)
             
             with torch.no_grad():
+                profiler.section('pack (train)')
                 packed = dataset.pack_raw(raw_images, pack_settings)
+                profiler.end_section()
+                
                 if dataset_train.transform is not None:
+                    profiler.section('augment (train)')
                     packed, gt_images = dataset_train.transform((packed, gt_images))
+                    profiler.end_section()
             
+            profiler.section('model (train)')
             if opt.auto_mixed_precision:
                 with torch.amp.autocast(device.type):
                     out_images = model(packed)
@@ -266,19 +276,23 @@ if __name__ == '__main__':
             else:
                 out_images = model(packed)
                 loss = criterion(out_images, gt_images)
+            profiler.end_section()
                 
                 
             total_loss += loss.item() * batch_size
             loss = loss / gradient_acc_total_steps
             
+            profiler.section('backward loss (train)')
             if opt.auto_mixed_precision:
                 scaler.scale(loss).backward()
             else:
                 loss.backward()
+            profiler.end_section()
             
             gradient_acc += 1
             if gradient_acc == gradient_acc_total_steps:
                 # update weights and reset gradients
+                profiler.section('optimize (train)')
                 if opt.auto_mixed_precision:
                     scaler.unscale_(optimizer)
                     scaler.step(optimizer)
@@ -288,6 +302,11 @@ if __name__ == '__main__':
     
                 optimizer.zero_grad()
                 gradient_acc = 0
+                profiler.end_section()
+            
+            profiler.section('wait data (train)')
+        
+        profiler.end_section()
         
         # handle accumulated gradients after last update
         if gradient_acc != 0:
@@ -313,7 +332,9 @@ if __name__ == '__main__':
         time_begin = time.time()
             
         with torch.no_grad():
+            profiler.section('wait data (val)')
             for batch_idx, ((raw_images, pack_settings), gt_images) in enumerate(tqdm(dataloader_val, f"Validation epoch {epoch_number}")):
+                profiler.end_section()
                 batch_size = raw_images.shape[0]
                 
                 raw_images = raw_images.to(device, non_blocking=True)
@@ -321,16 +342,24 @@ if __name__ == '__main__':
                 gt_images = gt_images.to(device, non_blocking=True)
                 
                 with torch.no_grad():
+                    profiler.section('pack (val)')
                     packed = dataset.pack_raw(raw_images, pack_settings)
-                    if dataset_val.transform is not None:
-                        packed, gt_images = dataset_val.transform((packed, gt_images))
+                    profiler.end_section()
                 
+                profiler.section('model (val)')
                 out_images = model(packed)
                 out_images = out_images.clip(0.0, 1.0)
                 
                 loss = criterion(out_images, gt_images)
                 total_loss += loss.item() * batch_size
                 total_psnr += image_util.batch_psnr(out_images, gt_images).mean().item() * batch_size
+                profiler.end_section()
+
+                profiler.section('wait data (val)')
+            profiler.end_section()
+        
+        profiler.print_evaluation()
+        profiler.reset_timings()
         
         log['avg_val_loss'] = total_loss / len_val_set
         log['avg_val_psnr'] = total_psnr / len_val_set
