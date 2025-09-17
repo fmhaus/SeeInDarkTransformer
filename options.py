@@ -3,8 +3,6 @@ class Options():
         pass
     
     def init(self, parser):
-        parser.add_argument('--lr_initial', type=float, default=5e-4, help='initial learning rate')
-        parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay')
         parser.add_argument('--num_workers', type=int, default=4, help='number of workers for loading data')
         parser.add_argument('--batch_size', type=int, default=1, help='number of images processed simultaneously')
         parser.add_argument('--effective_batch_size', type=int, default=4, help='number of images processed before updating weights')
@@ -15,8 +13,14 @@ class Options():
         parser.add_argument('--auto_mixed_precision', type=bool, default=False, help='whether to use auto mixed precision (AMP)')
         parser.add_argument('--augment_images_epoch', type=int, default=5, help='After what epoch images should be augmented (with random crops and flips)')
         parser.add_argument('--load_optimizer', type=bool, default=True, help='Whether to load the optimizer (and lr schedule) when using resume or not')
-        parser.add_argument('--encoder_train_factor', type=float, default=1.0, help='The factor to train the encoder with (1: regular, 0: encoder frozen)')
         parser.add_argument('--compile_model', type=bool, default=False, help='Whether to compile to the model to speedup execution')
+        
+        parser.add_argument('--encoder_initial_lr', type=float, default=1e-4, help='Initial learning rate for encoder (0: encoder frozen)')
+        parser.add_argument('--bottleneck_initial_lr', type=float, default=1e-4, help='Initial learning rate for bottleneck (0: bottleneck frozen)')
+        parser.add_argument('--decoder_initial_lr', type=float, default=1e-4, help='Initial learning rate for decoder (0: decoder frozen)')
+        parser.add_argument('--encoder_weight_decay', type=float, default=0, help='Weight decay for encoder')
+        parser.add_argument('--bottleneck_weight_decay', type=float, default=0, help='Weight decay for bottleneck')
+        parser.add_argument('--decoder_weight_decay', type=float, default=0, help='Weight decay for decoder')
         
         parser.add_argument('--dataset_folder', type=str, default='./../dataset', help='location of the downloaded and unzipped dataset')
         parser.add_argument('--preprocess_folder', type=str, default='./../preprocess', help='location where preprocesses images are stored')

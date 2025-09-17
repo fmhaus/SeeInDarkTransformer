@@ -58,29 +58,45 @@ if __name__ == '__main__':
             raise RuntimeError(f'Unaccounted model parameters: {name}')
     
     optimizer_params = []
+    optimizer_param_group_indices = [-1] * 3
 
-    if opt.encoder_train_factor > 0:
+    if opt.encoder_initial_lr > 0:
+        optimizer_param_group_indices[0] = len(optimizer_params)
         optimizer_params.append({
             'params': encoder_params,
-            'lr': opt.lr_initial * opt.encoder_train_factor,
-            'weight_decay': opt.weight_decay
+            'lr': opt.encoder_initial_lr,
+            'weight_decay': opt.encoder_weight_decay
         })
     else:
         for param in encoder_params:
-            param.reguires_grad = False
+            param.requires_grad = False
         print('Encoder frozen.')
     
-    optimizer_params.append({
-            'params': bottleneck_params,
-            'lr': opt.lr_initial,
-            'weight_decay': opt.weight_decay
-        })
-    optimizer_params.append({
-            'params': decoder_params,
-            'lr': opt.lr_initial,
-            'weight_decay': opt.weight_decay
-        })
-
+    
+    if opt.bottleneck_initial_lr > 0:
+        optimizer_param_group_indices[1] = len(optimizer_params)
+        optimizer_params.append({
+                'params': bottleneck_params,
+                'lr': opt.bottleneck_initial_lr,
+                'weight_decay': opt.bottleneck_weight_decay
+            })
+    else:
+        for param in bottleneck_params:
+            param.requires_grad = False
+        print('Bottleneck frozen.')
+    
+    if opt.decoder_initial_lr > 0:
+        optimizer_param_group_indices[2] = len(optimizer_params)
+        optimizer_params.append({
+                'params': decoder_params,
+                'lr': opt.decoder_initial_lr,
+                'weight_decay': opt.decoder_weight_decay
+            })
+    else:
+        for param in decoder_params:
+            param.requires_grad = False
+        print('Decoder frozen')
+    
     optimizer = torch.optim.AdamW(optimizer_params)
     if opt.auto_mixed_precision:
         print('Auto mixed precision enabled.')
@@ -135,7 +151,8 @@ if __name__ == '__main__':
     
     model.to(device=device)
     if opt.compile_model:
-        model.compile()
+        model = torch.compile(model)
+        print('Model compile enabled')
 
     # Scheduler
     warmup_scheduler = LinearLR(
@@ -181,10 +198,11 @@ if __name__ == '__main__':
         shuffle=True, 
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 
-        drop_last=False, 
-        persistent_workers=False
+        drop_last=True, 
+        persistent_workers=not dataset_train.pack_augment_on_worker
     )
 
+    # avoid recompilation 
     dataloader_val = DataLoader(
         dataset_val, 
         batch_size=opt.validation_batch_size, 
@@ -192,7 +210,7 @@ if __name__ == '__main__':
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 
         drop_last=False, 
-        persistent_workers=False
+        persistent_workers=not dataset_val.pack_augment_on_worker
     )
 
     print(f"{len_train_set} training images, {len_val_set} validation images")
@@ -216,8 +234,7 @@ if __name__ == '__main__':
         log = {}
         log['epoch'] = epoch_number
         log['lr_schedule_first_epoch'] = lr_schedule_first_epoch
-        log['learning_rate'] = optimizer.param_groups[0]['lr']
-        log['encoder_train_factor'] = opt.encoder_train_factor
+        log['learning_rates'] = [optimizer.param_groups[optimizer_param_group_indices[i]]['lr'] if optimizer_param_group_indices[i] != -1 else 0 for i in range(3)]
         log['auto_mixed_precision'] = opt.auto_mixed_precision
         log['augment_images'] = augment_images
         
