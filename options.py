@@ -10,11 +10,11 @@ class Options():
         parser.add_argument('--resume_epoch', type=int, default=0, help='epoch to resume training from (0 = train from zero)')
         parser.add_argument('--total_epochs', type=int, default=200, help='toal number of epochs')
         parser.add_argument('--warmup_epochs', type=int, default=5, help='number of warmup epochs (0 = no warmup)')
-        parser.add_argument('--auto_mixed_precision', type=bool, default=False, help='whether to use auto mixed precision (AMP)')
+        parser.add_argument('--auto_mixed_precision', action='store_true', default=False, help='whether to use auto mixed precision (AMP)')
         parser.add_argument('--augment_images_epoch', type=int, default=5, help='After what epoch images should be augmented (with random crops and flips)')
-        parser.add_argument('--load_optimizer', type=bool, default=True, help='Whether to load the optimizer (and lr schedule) when using resume or not')
-        parser.add_argument('--preload_gts', type=bool, default=False, help='Keeps the GTs in memory')
-        parser.add_argument('--compile_model', type=bool, default=False, help='Whether to compile to the model to speedup execution')
+        parser.add_argument('--load_optimizer', action='store_true', default=False, help='Whether to load the optimizer (and lr schedule) when using resume or not')
+        parser.add_argument('--preload_gts', action='store_true', default=False, help='Keeps the GTs in memory')
+        parser.add_argument('--compile_model', action='store_true', default=False, help='Whether to compile to the model to speedup execution')
         
         parser.add_argument('--encoder_initial_lr', type=float, default=1e-4, help='Initial learning rate for encoder (0: encoder frozen)')
         parser.add_argument('--bottleneck_initial_lr', type=float, default=1e-4, help='Initial learning rate for bottleneck (0: bottleneck frozen)')
@@ -30,6 +30,6 @@ class Options():
         parser.add_argument('--out_path', type=str, default='./../checkpoints', help='location where logs and checkpoints are stored')
         parser.add_argument('--save_checkpoint_frequency', type=int, default=1, help='After how many epochs the model and optimizer checkpoints should be saved')
 
-        parser.add_argument('--use_s3_storage', type=bool, default=False, help='whether to use s3 storage to store logs and checkpoints')
+        parser.add_argument('--use_s3_storage', action='store_true', default=False, help='whether to use s3 storage to store logs and checkpoints')
         parser.add_argument('--s3_prefix', type=str, default='train_out/test2/', help='prefix for storing s3 objects')
         return parser
