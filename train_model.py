@@ -259,7 +259,7 @@ if __name__ == '__main__':
             
             raw_images = raw_images.to(device, non_blocking=True)
             pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
-            gt_images = gt_images.to(device, non_blocking=True)
+            gt_images = gt_images.to(device=device, non_blocking=True, dtype=torch.float32)
             
             with torch.no_grad():
                 profiler.section('pack (train)')

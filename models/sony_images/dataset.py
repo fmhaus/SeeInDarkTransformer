@@ -51,48 +51,6 @@ def pack_raw(raw_image, settings):
     white_level = settings['white_level'].view(N, 4, 1, 1)
     exposure_ratio = settings['exposure_ratio'].view(N, 1, 1, 1)
     
-    normalized = (packed - black_level).clamp(min=0.0) / (white_level - black_level)
-    scaled = normalized * exposure_ratio
-    
-    return scaled.clamp(max=1.0)
-
-def pack_raw_promote_1(raw_image, settings):
-    N, H_2, W_2 = raw_image.shape
-    H = H_2 // 2
-    W = W_2 // 2
-    
-    packed = torch.empty((N, 4, H, W), dtype=torch.float32, device=raw_image.device)
-    packed[:, 0] = raw_image[:, 0::2, 0::2].to(torch.float32)
-    packed[:, 1] = raw_image[:, 0::2, 1::2].to(torch.float32)
-    packed[:, 2] = raw_image[:, 1::2, 1::2].to(torch.float32)
-    packed[:, 3] = raw_image[:, 1::2, 0::2].to(torch.float32)
-    
-    # match black and white level to [., C, ., .]
-    black_level = settings['black_level'].view(N, 4, 1, 1)
-    white_level = settings['white_level'].view(N, 4, 1, 1)
-    exposure_ratio = settings['exposure_ratio'].view(N, 1, 1, 1)
-    
-    normalized = (packed - black_level).clamp(min=0.0) / (white_level - black_level)
-    scaled = normalized * exposure_ratio
-    
-    return scaled.clamp(max=1.0)
-
-def pack_raw_promote_2(raw_image, settings):
-    N, H_2, W_2 = raw_image.shape
-    H = H_2 // 2
-    W = W_2 // 2
-    
-    packed = torch.empty((N, 4, H, W), dtype=raw_image.dtype, device=raw_image.device)
-    packed[:, 0] = raw_image[:, 0::2, 0::2]
-    packed[:, 1] = raw_image[:, 0::2, 1::2]
-    packed[:, 2] = raw_image[:, 1::2, 1::2]
-    packed[:, 3] = raw_image[:, 1::2, 0::2]
-    
-    # match black and white level to [., C, ., .]
-    black_level = settings['black_level'].view(N, 4, 1, 1)
-    white_level = settings['white_level'].view(N, 4, 1, 1)
-    exposure_ratio = settings['exposure_ratio'].view(N, 1, 1, 1)
-    
     normalized = (packed.to(torch.float32) - black_level).clamp(min=0.0) / (white_level - black_level)
     scaled = normalized * exposure_ratio
     
