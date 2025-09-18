@@ -37,7 +37,7 @@ if __name__ == '__main__':
     torch.cuda.manual_seed_all(1234)
 
     # Model
-    model = sid_bottleneck_transformer.Model()
+    model = sid_bottleneck_transformer.Model(attn_dropout=opt.attn_dropout, mlp_dropout=opt.mlp_dropout)
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

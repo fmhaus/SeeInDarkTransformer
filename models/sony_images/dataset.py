@@ -20,7 +20,7 @@ class GTDict():
 
 def preprocess_raw_gts(gt_folder, preprocess_folder):
     os.makedirs(preprocess_folder, exist_ok=True)
-    for filename in os.listdir(gt_folder, 'Preprocessing GTs'):
+    for filename in tqdm(os.listdir(gt_folder), 'Preprocessing GTs'):
         npy_file = os.path.join(preprocess_folder, filename + '.npy')
         if not os.path.exists(npy_file):
             raw_file = os.path.join(gt_folder, filename)

@@ -5,38 +5,27 @@ import math
 from util import image_util
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim_model, n_heads, dim_ff=None, dropout_attn=0.1, dropout_mlp=0.1):
+    def __init__(self, dim_model, n_heads, attn_dropout=0.1, mlp_dropout=0.1, dim_ff=None):
         super().__init__()
         
         dim_ff = dim_ff or 4 * dim_model
         
-        self.attention = nn.MultiheadAttention(dim_model, n_heads, dropout=dropout_attn, batch_first=True)
+        self.attention = nn.MultiheadAttention(dim_model, n_heads, dropout=attn_dropout, batch_first=True)
         
         self.mlp = nn.Sequential(
             nn.Linear(dim_model, dim_ff),
             nn.GELU(),
-            nn.Dropout(dropout_mlp),
+            nn.Dropout(attn_dropout),
             nn.Linear(dim_ff, dim_model)
         )
         
         self.norm1 = nn.LayerNorm(dim_model, eps=1e-6)
         self.norm2 = nn.LayerNorm(dim_model, eps=1e-6)
         
-        self.dropout1 = nn.Dropout(dropout_attn)
-        self.dropout2 = nn.Dropout(dropout_mlp)
+        self.dropout1 = nn.Dropout(attn_dropout)
+        self.dropout2 = nn.Dropout(mlp_dropout)
         
         self.apply(self._init_weights)
-    
-    # Truncation normal initialization
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            nn.init.trunc_normal_(m.weight, std=0.02)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.ones_(m.weight)
-            nn.init.zeros_(m.bias)
-
     
     def forward(self, x):
         # use pre layer norm
@@ -48,16 +37,26 @@ class TransformerBlock(nn.Module):
         x = x + self.dropout2(mlp_output)
         
         return x
+    
+    # Truncation normal initialization
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            nn.init.trunc_normal_(m.weight, std=0.02)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.ones_(m.weight)
+            nn.init.zeros_(m.bias)
 
 class TransformerBottleneck(nn.Module):
-    def __init__(self, n_transformer_blocks, in_channels, dim_model):
+    def __init__(self, n_transformer_blocks, in_channels, dim_model, attn_dropout=0.1, mlp_dropout=0.1):
         super().__init__()
         
         self.down = nn.Conv2d(in_channels, dim_model, 2, stride=2)
         
         self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((45, 67), dim_model), persistent=False)
         
-        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4) for _ in range(n_transformer_blocks)])
+        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4, attn_dropout, mlp_dropout) for _ in range(n_transformer_blocks)])
         
         self.conv = nn.Conv2d(dim_model, in_channels, 1, padding='same')
         
@@ -113,7 +112,7 @@ class TransformerBottleneck(nn.Module):
         return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2).view(h*w, dim_model)
 
 class Model(nn.Module):
-    def __init__(self):
+    def __init__(self, attn_dropout=0.1, mlp_dropout=0.1):
         super().__init__()
         
         self.lrelu = nn.LeakyReLU(negative_slope=0.2)
@@ -131,7 +130,7 @@ class Model(nn.Module):
         self.conv4_1 = nn.Conv2d(128, 256, 3, padding='same')
         self.conv4_2 = nn.Conv2d(256, 256, 3, padding='same')
         
-        self.bottleneck5 = TransformerBottleneck(4, 256, 256)
+        self.bottleneck5 = TransformerBottleneck(4, 256, 256, attn_dropout=attn_dropout, mlp_dropout=mlp_dropout)
                 
         self.up6 = nn.ConvTranspose2d(512, 256, 2, stride=2, bias=False)
         self.conv6_1 = nn.Conv2d(512, 256, 3, padding='same')

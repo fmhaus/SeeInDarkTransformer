@@ -22,6 +22,8 @@ class Options():
         parser.add_argument('--encoder_weight_decay', type=float, default=0, help='Weight decay for encoder')
         parser.add_argument('--bottleneck_weight_decay', type=float, default=0, help='Weight decay for bottleneck')
         parser.add_argument('--decoder_weight_decay', type=float, default=0, help='Weight decay for decoder')
+        parser.add_argument('--mlp_dropout', type=float, default=0.1, help='Dropout value for the Transformer MLP')
+        parser.add_argument('--attn_dropout', type=float, default=0.1, help='Dropout value for the Transformer Attention')
         
         parser.add_argument('--dataset_folder', type=str, default='./../dataset', help='location of the downloaded and unzipped dataset')
         parser.add_argument('--preprocess_folder', type=str, default='./../preprocess', help='location where preprocesses images are stored')
