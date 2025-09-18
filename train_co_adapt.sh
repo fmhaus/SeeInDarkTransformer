@@ -23,5 +23,5 @@ python3 train_model.py \
   --preload_gts True \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
-  --out_path '/content/drive/MyDrive/SID/out_v1/' \
+  --out_path '/content/drive/MyDrive/SID/out_v2/' \
   --save_checkpoint_frequency 10 
