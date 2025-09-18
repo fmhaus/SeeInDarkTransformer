@@ -150,6 +150,7 @@ if __name__ == '__main__':
         print(f'Starting in epoch 1.')
     
     model.to(device=device)
+    model_uncompiled = model
     if opt.compile_model:
         model = torch.compile(model)
         print('Model compile enabled')
@@ -376,7 +377,7 @@ if __name__ == '__main__':
             
             if epoch_number % opt.save_checkpoint_frequency == 0:
                 buffer = io.BytesIO()
-                torch.save(model.state_dict(), buffer)
+                torch.save(model_uncompiled.state_dict(), buffer)
                 buffer.seek(0)
                 object_storage.store_file(opt.s3_prefix + f'model_checkpoint_{epoch_number}.pt', buffer, binary=True)
                 
@@ -390,7 +391,7 @@ if __name__ == '__main__':
                 fr.write(json.dumps(log))
             
             if epoch_number % opt.save_checkpoint_frequency == 0:
-                torch.save(model.state_dict(), os.path.join(opt.out_path, f'model_checkpoint_{epoch_number}.pt'))
+                torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_path, f'model_checkpoint_{epoch_number}.pt'))
                 torch.save(optimizer.state_dict(), os.path.join(opt.out_path, f'optimizer_checkpoint_{epoch_number}.pt'))
         
         print(f'Epoch {epoch_number}: Train loss {log['avg_train_loss']}, Validation loss {log['avg_val_loss']}, Validation PSNR {log['avg_val_psnr']}')
