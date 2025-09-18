@@ -125,7 +125,7 @@ class QuadViewer:
         self.image_views = [ImageView(path) if path else None for path in self.scenes[self.scene_index]]
         if self.image_views[GROUND_TRUTH_INDEX]:
             for i in range(0, 4):
-                if CALCULATE_COMPARISON[i]:
+                if CALCULATE_COMPARISON[i] and self.image_views[i]:
                     self.image_views[i].calculate_comparison(self.image_views[GROUND_TRUTH_INDEX].image)
         
         self.zoom = 1.0
@@ -227,7 +227,7 @@ class QuadViewer:
             fname = os.path.basename(view.path) if view else "(empty)"
             text = f"{LABELS[i]} - {fname}"
             
-            if view.comparison_text is not None:
+            if view and view.comparison_text:
                 text += " - " + view.comparison_text
 
             # Label bar
