@@ -17,10 +17,9 @@ python3 train_model.py \
   --resume_epoch 30 \
   --warmup_epochs 10 \
   --total_epochs 200 \
-  --auto_mixed_precision True \
-  --load_optimizer False \
-  --compile_model True \
-  --preload_gts True \
+  --auto_mixed_precision \
+  --compile_model \
+  --preload_gts \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
   --out_path '/content/drive/MyDrive/SID/out_v2/' \
