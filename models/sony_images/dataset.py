@@ -5,33 +5,28 @@ import rawpy
 from tqdm import tqdm
 from util.profiler import Profiler, DummyProfiler
 
-def preprocess_raw_gts(gt_folder, preprocessed_folder):
-    os.makedirs(preprocessed_folder, exist_ok=True)
+class GTDict():
+    def __init__(self, gt_folder):
+        self.tensors = {}
+        for filename in tqdm(os.listdir(gt_folder), 'Preloading GTs'):
+            raw_file = os.path.join(gt_folder, filename)
+            gt = rawpy.imread(raw_file).postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
+            tensor = np.permute_dims(np.float16(gt / 65535.0), axes=(2, 0, 1))
+            self.tensors[filename] = tensor
     
-    for filename in tqdm(os.listdir(gt_folder), 'Preprocessing ground truth images'):
-        npy_file = os.path.join(preprocessed_folder, filename + '.npy')
+    def get(self, filename):
+        return self.tensors[filename]
+            
+
+def preprocess_raw_gts(gt_folder, preprocess_folder):
+    os.makedirs(preprocess_folder, exist_ok=True)
+    for filename in os.listdir(gt_folder, 'Preprocessing GTs'):
+        npy_file = os.path.join(preprocess_folder, filename + '.npy')
         if not os.path.exists(npy_file):
             raw_file = os.path.join(gt_folder, filename)
             gt = rawpy.imread(raw_file).postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
-            tensor = np.permute_dims(np.float32(gt / 65535.0), axes=(2, 0, 1))
+            tensor = np.permute_dims(np.float16(gt / 65535.0), axes=(2, 0, 1))
             np.save(npy_file, tensor)
-
-def pack_raw_old(im, ratio):
-    im = np.maximum(im - 512, 0) / (16383 - 512)
-    
-    im = np.expand_dims(im, axis=0)
-    img_shape = im.shape
-    H = img_shape[1]
-    W = img_shape[2]
-         
-    out = np.concatenate((im[:, 0:H:2, 0:W:2],
-                            im[:, 0:H:2, 1:W:2],
-                            im[:, 1:H:2, 1:W:2],
-                            im[:, 1:H:2, 0:W:2]), axis=0)
-        
-    out = np.minimum(out * ratio, 1.0)
-    
-    return torch.from_numpy(out)
 
 def get_pack_settings(raw, exposure_ratio):
     return {
@@ -60,13 +55,60 @@ def pack_raw(raw_image, settings):
     scaled = normalized * exposure_ratio
     
     return scaled.clamp(max=1.0)
+
+def pack_raw_promote_1(raw_image, settings):
+    N, H_2, W_2 = raw_image.shape
+    H = H_2 // 2
+    W = W_2 // 2
+    
+    packed = torch.empty((N, 4, H, W), dtype=torch.float32, device=raw_image.device)
+    packed[:, 0] = raw_image[:, 0::2, 0::2].to(torch.float32)
+    packed[:, 1] = raw_image[:, 0::2, 1::2].to(torch.float32)
+    packed[:, 2] = raw_image[:, 1::2, 1::2].to(torch.float32)
+    packed[:, 3] = raw_image[:, 1::2, 0::2].to(torch.float32)
+    
+    # match black and white level to [., C, ., .]
+    black_level = settings['black_level'].view(N, 4, 1, 1)
+    white_level = settings['white_level'].view(N, 4, 1, 1)
+    exposure_ratio = settings['exposure_ratio'].view(N, 1, 1, 1)
+    
+    normalized = (packed - black_level).clamp(min=0.0) / (white_level - black_level)
+    scaled = normalized * exposure_ratio
+    
+    return scaled.clamp(max=1.0)
+
+def pack_raw_promote_2(raw_image, settings):
+    N, H_2, W_2 = raw_image.shape
+    H = H_2 // 2
+    W = W_2 // 2
+    
+    packed = torch.empty((N, 4, H, W), dtype=raw_image.dtype, device=raw_image.device)
+    packed[:, 0] = raw_image[:, 0::2, 0::2]
+    packed[:, 1] = raw_image[:, 0::2, 1::2]
+    packed[:, 2] = raw_image[:, 1::2, 1::2]
+    packed[:, 3] = raw_image[:, 1::2, 0::2]
+    
+    # match black and white level to [., C, ., .]
+    black_level = settings['black_level'].view(N, 4, 1, 1)
+    white_level = settings['white_level'].view(N, 4, 1, 1)
+    exposure_ratio = settings['exposure_ratio'].view(N, 1, 1, 1)
+    
+    normalized = (packed.to(torch.float32) - black_level).clamp(min=0.0) / (white_level - black_level)
+    scaled = normalized * exposure_ratio
+    
+    return scaled.clamp(max=1.0)
     
 
 class RawImageDataset(torch.utils.data.Dataset):
-    def __init__(self, set_list, dataset_folder, preprocessed_gt_folder, give_meta=False, pack_augment_on_worker=True, profiling=None):
+    def __init__(self, set_list, dataset_folder, gt_data, give_meta=False, pack_augment_on_worker=True, profiling=None):
         self.items = set_list
         self.dataset_folder = dataset_folder
-        self.gt_folder = preprocessed_gt_folder
+        if isinstance(gt_data, str):
+            self.gt_folder = gt_data
+            self.preloaded_gt = False
+        elif isinstance(gt_data, GTDict):
+            self.gt_dict = gt_data
+            self.preloaded_gt = True
         self.transform = None
         self.give_meta = give_meta
         self.pack_augment_on_worker = pack_augment_on_worker
@@ -89,12 +131,15 @@ class RawImageDataset(torch.utils.data.Dataset):
         
         profiler.section('read_raw')
         raw = rawpy.imread(in_file)
-        image_raw = torch.tensor(raw.raw_image_visible, dtype=torch.float32)
+        image_raw = torch.tensor(raw.raw_image_visible, dtype=torch.float16)
         profiler.end_section()
         
         profiler.section('load_gt')
-        gt_file = os.path.join(self.gt_folder, gt_filename + '.npy')
-        gt_image = torch.from_numpy(np.load(gt_file, allow_pickle=True))
+        if self.preloaded_gt:
+            gt_image = self.gt_dict.get(gt_filename)
+        else:
+            gt_file = os.path.join(self.gt_folder, gt_filename + '.npy')
+            gt_image = torch.from_numpy(np.load(gt_file, allow_pickle=True))
         profiler.end_section()
         
         pack_settings = get_pack_settings(raw, gt_exposure / in_exposure)

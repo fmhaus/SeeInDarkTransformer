@@ -13,6 +13,7 @@ class Options():
         parser.add_argument('--auto_mixed_precision', type=bool, default=False, help='whether to use auto mixed precision (AMP)')
         parser.add_argument('--augment_images_epoch', type=int, default=5, help='After what epoch images should be augmented (with random crops and flips)')
         parser.add_argument('--load_optimizer', type=bool, default=True, help='Whether to load the optimizer (and lr schedule) when using resume or not')
+        parser.add_argument('--preload_gts', type=bool, default=False, help='Keeps the GTs in memory')
         parser.add_argument('--compile_model', type=bool, default=False, help='Whether to compile to the model to speedup execution')
         
         parser.add_argument('--encoder_initial_lr', type=float, default=1e-4, help='Initial learning rate for encoder (0: encoder frozen)')

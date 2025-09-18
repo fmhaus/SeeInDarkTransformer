@@ -179,15 +179,19 @@ if __name__ == '__main__':
 
     # ---------- DataLoader ----------
     
-    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder)
+    if opt.preload_gts:
+        gt_data = dataset.GTDict(os.path.join(opt.dataset_folder, 'Sony', 'long'))
+    else:
+        dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder, 4)
+        dt_data = opt.preprocess_folder
         
     with open('./data_lists/Sony_train_list.txt') as fr:
         train_list = list(line.split(' ') for line in fr.readlines())
     with open('./data_lists/Sony_val_list.txt') as fr:
         val_list = list(line.split(' ') for line in fr.readlines())
     
-    dataset_train = dataset.RawImageDataset(train_list, opt.dataset_folder, opt.preprocess_folder, pack_augment_on_worker=False)
-    dataset_val = dataset.RawImageDataset(val_list, opt.dataset_folder, opt.preprocess_folder, pack_augment_on_worker=False)
+    dataset_train = dataset.RawImageDataset(train_list, opt.dataset_folder, gt_data, pack_augment_on_worker=False)
+    dataset_val = dataset.RawImageDataset(val_list, opt.dataset_folder, gt_data, pack_augment_on_worker=False)
 
     len_train_set = len(dataset_train)
     len_val_set = len(dataset_val)
@@ -202,7 +206,6 @@ if __name__ == '__main__':
         persistent_workers=not dataset_train.pack_augment_on_worker
     )
 
-    # avoid recompilation 
     dataloader_val = DataLoader(
         dataset_val, 
         batch_size=opt.validation_batch_size, 
