@@ -174,6 +174,8 @@ if __name__ == '__main__':
         milestones=[opt.warmup_epochs]
     )
 
+    print(f'Starting LR schedule on epoch {start_epoch - lr_schedule_first_epoch + 1}')
+
     # Loss
     criterion = nn.L1Loss().to(device=device)
 
