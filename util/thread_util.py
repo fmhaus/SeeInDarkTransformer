@@ -20,8 +20,8 @@ class TaskDataset(torch.utils.data.Dataset):
 def process_parallel(tasks, userdata, process_fn, num_workers, tqdm_title):
     dataset = TaskDataset(tasks, userdata, process_fn)
     dataloader = torch.utils.data.DataLoader(
-        dataset, 
-        batch_size=1, 
+        dataset,
+        batch_size=None,
         shuffle=False, 
         num_workers=num_workers,
         drop_last=False,

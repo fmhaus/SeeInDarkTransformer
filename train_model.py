@@ -329,12 +329,12 @@ if __name__ == '__main__':
         
         # store logs and checkpoints
         
-        os.makedirs(opt.out_path, exist_ok=True)
-        with open(os.path.join(opt.out_path, f'log_{epoch_number}.json'), 'w')as fr:
+        os.makedirs(opt.out_folder, exist_ok=True)
+        with open(os.path.join(opt.out_folder, f'log_{epoch_number}.json'), 'w')as fr:
             fr.write(json.dumps(log))
         
         if epoch_number % opt.save_checkpoint_frequency == 0:
-            torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_path, f'model_checkpoint_{epoch_number}.pt'))
-            torch.save(optimizer.state_dict(), os.path.join(opt.out_path, f'optimizer_checkpoint_{epoch_number}.pt'))
+            torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_folder, f'model_checkpoint_{epoch_number}.pt'))
+            torch.save(optimizer.state_dict(), os.path.join(opt.out_folder, f'optimizer_checkpoint_{epoch_number}.pt'))
         
         print(f'Epoch {epoch_number}: Train loss {log['avg_train_loss']}, Validation loss {log['avg_val_loss']}, Validation PSNR {log['avg_val_psnr']}')
