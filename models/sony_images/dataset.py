@@ -2,28 +2,37 @@ import torch
 import numpy as np
 import os
 import rawpy
-from tqdm import tqdm
 from util.profiler import Profiler, DummyProfiler
+from util import thread_util
+
+
+def _load_gt(preprocess_folder, filename):
+    return np.load(os.path.join(preprocess_folder, filename))
+
+def _preprocess_gt(userdata, filename):
+    preprocess_folder, gt_folder = userdata
+    npy_file = os.path.join(preprocess_folder, filename + '.npy')
+    if not os.path.exists(npy_file):
+        raw_file = os.path.join(gt_folder, filename)
+        gt = rawpy.imread(raw_file).postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
+        tensor = np.permute_dims(np.float16(gt / 65535.0), axes=(2, 0, 1))
+        np.save(npy_file, tensor)
 
 class GTDict():
-    def __init__(self, preprocess_folder):
+    def __init__(self, preprocess_folder, num_workers=0):
         self.tensors = {}
-        for filename in tqdm(os.listdir(preprocess_folder), 'Preloading GTs'):
-            self.tensors[filename] = np.load(os.path.join(preprocess_folder, filename))
+        files_list = list(os.listdir(preprocess_folder))
+        results = thread_util.process_parallel(files_list, preprocess_folder, _load_gt, num_workers, 'Preloading GTs')
+        for i, res in enumerate(results):
+            self.tensors[files_list[i]] = res
     
     def get(self, filename):
         return self.tensors[filename]
             
 
-def preprocess_raw_gts(gt_folder, preprocess_folder):
+def preprocess_raw_gts(gt_folder, preprocess_folder, num_workers=0):
     os.makedirs(preprocess_folder, exist_ok=True)
-    for filename in tqdm(os.listdir(gt_folder), 'Preprocessing GTs'):
-        npy_file = os.path.join(preprocess_folder, filename + '.npy')
-        if not os.path.exists(npy_file):
-            raw_file = os.path.join(gt_folder, filename)
-            gt = rawpy.imread(raw_file).postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
-            tensor = np.permute_dims(np.float16(gt / 65535.0), axes=(2, 0, 1))
-            np.save(npy_file, tensor)
+    thread_util.process_parallel(list(os.listdir(gt_folder)), (preprocess_folder, gt_folder), _preprocess_gt, num_workers, 'Preprocessing GTs')
 
 def get_pack_settings(raw, exposure_ratio):
     return {
