@@ -107,7 +107,7 @@ if __name__ == '__main__':
         with open(os.path.join(opt.out_folder, f'log_{opt.resume_epoch}.json'), 'r') as fr:
             log = json.load(fr)
         
-        model_file = os.path.join(opt.out_path, f'model_checkpoint_{opt.resume_epoch}.pt')
+        model_file = os.path.join(opt.out_folder, f'model_checkpoint_{opt.resume_epoch}.pt')
         model_checkpoint = torch.load(model_file, weights_only=True, map_location=device)
         
         model.load_state_dict(model_checkpoint)
@@ -117,7 +117,7 @@ if __name__ == '__main__':
             # also load in what epoch lr schedule started
             lr_schedule_first_epoch = log['lr_schedule_first_epoch']
            
-            optimizer_file = os.path.join(opt.out_path, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
+            optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
             optimizer_checkpoint = torch.load(optimizer_file, weights_only=True, map_location=device)
                 
             optimizer.load_state_dict(optimizer_checkpoint)
