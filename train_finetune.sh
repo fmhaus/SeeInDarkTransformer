@@ -19,6 +19,7 @@ python3 train_model.py \
   --total_epochs 100 \
   --auto_mixed_precision \
   --compile_model \
+  --preload_gts \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
   --out_folder '/content/drive/MyDrive/SID/out_v4/' \

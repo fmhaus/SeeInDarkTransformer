@@ -108,7 +108,7 @@ if __name__ == '__main__':
             log = json.load(fr)
         
         model_file = os.path.join(opt.out_folder, f'model_checkpoint_{opt.resume_epoch}.pt')
-        model_checkpoint = torch.load(model_file, map_location=device)
+        model_checkpoint = torch.load(model_file, map_location=torch.device('cpu'))
         
         model.load_state_dict(model_checkpoint)
         print(f'Loaded model_checkpoint_{opt.resume_epoch}.')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
             lr_schedule_first_epoch = log['lr_schedule_first_epoch']
            
             optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
-            optimizer_checkpoint = torch.load(optimizer_file, map_location=device)
+            optimizer_checkpoint = torch.load(optimizer_file, map_location=torch.device('cpu'))
                 
             optimizer.load_state_dict(optimizer_checkpoint)
             print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
