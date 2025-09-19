@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     # ---------- DataLoader ----------
     
-    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder, 4)
+    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder)
     
     if opt.preload_gts:
         gt_data = dataset.GTDict(opt.preprocess_folder)
