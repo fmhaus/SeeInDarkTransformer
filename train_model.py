@@ -158,7 +158,7 @@ if __name__ == '__main__':
         optimizer,
         last_epoch=start_epoch - lr_schedule_first_epoch,
         schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[opt.warmup_epochs]
+        milestones=[opt.warmup_epochs+1]
     )
 
     print(f'Starting LR schedule on epoch {start_epoch - lr_schedule_first_epoch + 1}.')

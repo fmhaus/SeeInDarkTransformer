@@ -6,18 +6,19 @@ python3 train_model.py \
   --bottleneck_initial_lr 1e-4 \
   --bottleneck_weight_decay 0.05 \
   --decoder_initial_lr 3e-5 \
-  --decoder_weight_decay 0 \
+  --decoder_weight_decay 1e-5 \
+  --attn_dropout 0.1 \
+  --mlp_dropout 0.15 \
   \
   --num_workers 6 \
   --batch_size 3 \
   --effective_batch_size 24 \
   --validation_batch_size 6 \
-  --resume_epoch 0 \
-  --warmup_epochs 10 \
-  --total_epochs 200 \
-  --auto_mixed_precision True \
-  --load_optimizer False \
-  --compile_model True \
+  --resume_epoch 20 \
+  --warmup_epochs 5 \
+  --total_epochs 100 \
+  --auto_mixed_precision \
+  --compile_model \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
   --out_folder '/content/drive/MyDrive/SID/out_v1/' \
