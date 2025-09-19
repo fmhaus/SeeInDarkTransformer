@@ -57,7 +57,7 @@ class Model(torch.nn.Module):
         pool4 = self.max_pool(conv4)
            
         # connect zeros in up6
-        up6 = torch.cat((self.up6(torch.zeros(pool4.shape)), conv4), dim = 1)
+        up6 = torch.cat((torch.zeros(conv4.shape), conv4), dim = 1)
         conv6 = self.lrelu(self.conv6_1(up6))
         conv6 = self.lrelu(self.conv6_2(conv6))
           

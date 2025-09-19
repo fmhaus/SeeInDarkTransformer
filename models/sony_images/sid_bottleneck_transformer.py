@@ -58,9 +58,7 @@ class TransformerBottleneck(nn.Module):
         
         self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4, attn_dropout, mlp_dropout) for _ in range(n_transformer_blocks)])
         
-        self.conv = nn.Conv2d(dim_model, in_channels, 1, padding='same')
-        
-        self.up = nn.ConvTranspose2d(in_channels, in_channels, 2, stride=2)
+        self.up = nn.ConvTranspose2d(dim_model, in_channels, 2, stride=2)
     
     def forward(self, x):
         # need padding for odd dimension
@@ -78,8 +76,7 @@ class TransformerBottleneck(nn.Module):
         
         # return to conv shape
         reshaped = embeddings.transpose(1, 2).reshape(down_shape)
-        conv = self.conv(reshaped)
-        up = self.up(conv)
+        up = self.up(reshaped)
         return self.crop_like(up, (h, w))
     
     def pad_to_even(self, x):
@@ -130,7 +127,7 @@ class Model(nn.Module):
         self.conv4_1 = nn.Conv2d(128, 256, 3, padding='same')
         self.conv4_2 = nn.Conv2d(256, 256, 3, padding='same')
         
-        self.bottleneck5 = TransformerBottleneck(4, 256, 256, attn_dropout=attn_dropout, mlp_dropout=mlp_dropout)
+        self.bottleneck5 = TransformerBottleneck(3, 256, 256, attn_dropout=attn_dropout, mlp_dropout=mlp_dropout)
                 
         self.up6 = nn.ConvTranspose2d(512, 256, 2, stride=2, bias=False)
         self.conv6_1 = nn.Conv2d(512, 256, 3, padding='same')

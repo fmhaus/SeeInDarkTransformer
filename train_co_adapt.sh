@@ -6,9 +6,9 @@ python3 train_model.py \
   --bottleneck_initial_lr 3e-4 \
   --bottleneck_weight_decay 0.1 \
   --decoder_initial_lr 1e-4 \
-  --decoder_weight_decay 1e-41 \
+  --decoder_weight_decay 1e-4 \
   --attn_dropout 0.1 \
-  --mlp_dropout 0.2 \
+  --mlp_dropout 0.15 \
   \
   --num_workers 6 \
   --batch_size 3 \
@@ -22,5 +22,5 @@ python3 train_model.py \
   --preload_gts \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
-  --out_path '/content/drive/MyDrive/SID/out_v2/' \
+  --out_folder '/content/drive/MyDrive/SID/out_v2/' \
   --save_checkpoint_frequency 10 

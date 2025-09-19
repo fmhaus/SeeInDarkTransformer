@@ -6,13 +6,10 @@ from tqdm import tqdm
 from util.profiler import Profiler, DummyProfiler
 
 class GTDict():
-    def __init__(self, gt_folder):
+    def __init__(self, preprocess_folder):
         self.tensors = {}
-        for filename in tqdm(os.listdir(gt_folder), 'Preloading GTs'):
-            raw_file = os.path.join(gt_folder, filename)
-            gt = rawpy.imread(raw_file).postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
-            tensor = np.permute_dims(np.float16(gt / 65535.0), axes=(2, 0, 1))
-            self.tensors[filename] = tensor
+        for filename in tqdm(os.listdir(preprocess_folder), 'Preloading GTs'):
+            self.tensors[filename] = np.load(os.path.join(preprocess_folder, filename))
     
     def get(self, filename):
         return self.tensors[filename]

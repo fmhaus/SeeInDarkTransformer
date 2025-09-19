@@ -20,5 +20,5 @@ python3 train_model.py \
   --compile_model True \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
-  --out_path '/content/drive/MyDrive/SID/out_v1/' \
+  --out_folder '/content/drive/MyDrive/SID/out_v1/' \
   --save_checkpoint_frequency 10 

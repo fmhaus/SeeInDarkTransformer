@@ -1,6 +1,7 @@
 import random
 import torch
 import torch.nn.functional as F
+import numpy as np
 import math
 
 def augment_mirror(item):
@@ -129,17 +130,17 @@ class AugmentSequentiel():
         
 def batch_psnr(img, gt, max_val = 1.0):
     mse = ((img - gt)**2).mean(dim=(1, 2, 3))
-    mse = torch.clamp(mse, min=1e-10)
-    
-    psnr = 20.0 * math.log10(max_val) -10.0 * torch.log10(mse)
+    mse = torch.clamp(mse, min=1e-10)   # clamp for numeric stability
+    psnr = 20.0 * math.log10(max_val) - 10.0 * torch.log10(mse)
     return psnr
 
-def tensor_to_images(tensor, flip_to_bgr = False):
+def tensor_to_images(tensor):
     tensor = (tensor.clip(0.0, 1.0) * 255.0).to(dtype=torch.uint8)
     tensor = torch.permute(tensor, (0, 2, 3, 1))
-    if flip_to_bgr:
-        tensor = torch.flip(tensor, [3])
     return tensor.numpy(force=True)
+
+def images_flip_rgb_bgr(tensor):
+    return np.flip(tensor, 3)
 
 def depth_to_space(tensor, R):
     N, C_in, H, W = tensor.shape
