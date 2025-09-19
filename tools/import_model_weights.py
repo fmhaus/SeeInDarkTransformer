@@ -5,7 +5,7 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
 import numpy as np
 import torch
 import os
-from models.sony_images import sid_original
+from models.sony_images import sid_original, sid_bottleneck_transformer, sid_no_bottleneck
 
 EXPORT_DIR = './models/sony_images/states/tf_export/'
 MODEL_STATE_FILE= './models/sony_images/states/sid_bottleneck_transformer_initial.pt'
@@ -67,7 +67,7 @@ NAME_MAP = {
     'g_conv10\\biases.npy': 'conv10.bias'
 }
 
-model = sid_original.Model()
+model = sid_bottleneck_transformer.Model()
 state_dict = model.state_dict()
 
 for root, dirs, files in os.walk(EXPORT_DIR):

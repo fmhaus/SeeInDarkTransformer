@@ -29,7 +29,5 @@ class Options():
         parser.add_argument('--preprocess_folder', type=str, default='./../preprocess', help='location where preprocesses images are stored')
         parser.add_argument('--out_folder', type=str, default='./../checkpoints', help='location where logs and checkpoints are stored')
         parser.add_argument('--save_checkpoint_frequency', type=int, default=1, help='After how many epochs the model and optimizer checkpoints should be saved')
-
-        parser.add_argument('--use_s3_storage', action='store_true', default=False, help='whether to use s3 storage to store logs and checkpoints')
-        parser.add_argument('--s3_prefix', type=str, default='train_out/test2/', help='prefix for storing s3 objects')
+        
         return parser
