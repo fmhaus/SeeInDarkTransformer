@@ -14,13 +14,13 @@ python3 train_model.py \
   --batch_size 3 \
   --effective_batch_size 24 \
   --validation_batch_size 6 \
-  --resume_epoch 30 \
-  --warmup_epochs 10 \
-  --total_epochs 200 \
+  --resume_epoch 0 \
+  --warmup_epochs 5 \
+  --total_epochs 100 \
   --auto_mixed_precision \
   --compile_model \
   --preload_gts \
   --dataset_folder './../dataset/' \
   --preprocess_folder './../preprocess/' \
-  --out_folder '/content/drive/MyDrive/SID/out_v2/' \
+  --out_folder '/content/drive/MyDrive/SID/out_v3/' \
   --save_checkpoint_frequency 10 
