@@ -24,7 +24,8 @@ class GTDict():
         files_list = list(os.listdir(preprocess_folder))
         results = thread_util.process_parallel(files_list, preprocess_folder, _load_gt, num_workers, 'Preloading GTs')
         for i, res in enumerate(results):
-            self.tensors[files_list[i]] = res
+            # remove .npy ending
+            self.tensors[files_list[i][:-4]] = res
     
     def get(self, filename):
         return self.tensors[filename]
