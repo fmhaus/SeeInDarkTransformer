@@ -22,6 +22,8 @@ if __name__ == '__main__':
     print(f"Time now: {datetime.datetime.now().isoformat()}")
     print(f"CPU core count is {os.cpu_count()}.")
     print(opt)
+    
+    torch.backends.cudnn.benchmark = True
 
     # set seeds
     random.seed(1234)
@@ -141,7 +143,6 @@ if __name__ == '__main__':
     model.to(device=device)
     model_uncompiled = model
     if opt.compile_model:
-        torch.backends.cudnn.benchmark = True
         model = torch.compile(model)
         print('Model compile enabled.')
 
