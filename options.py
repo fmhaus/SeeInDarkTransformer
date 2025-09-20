@@ -6,8 +6,8 @@ def init_common(parser):
     
     # device specific
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers for loading data')
-    parser.add_argument('--batch_size', type=int, default=1, help='number of images processed simultaneously')
-    parser.add_argument('--validation_batch_size', type=int, default=1, help='number of images processed simultaneously for validation')
+    parser.add_argument('--train_batch_size', type=int, default=1, help='number of images processed simultaneously')
+    parser.add_argument('--forward_batch_size', type=int, default=1, help='number of images processed simultaneously for validation')
     parser.add_argument('--auto_mixed_precision', action='store_true', default=False, help='whether to use auto mixed precision (AMP)')
     parser.add_argument('--preload_gts', action='store_true', default=False, help='Keeps the GTs in memory')
     parser.add_argument('--compile_model', action='store_true', default=False, help='Whether to compile to the model to speedup execution')

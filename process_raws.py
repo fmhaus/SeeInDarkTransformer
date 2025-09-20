@@ -1,7 +1,6 @@
 import os
 import rawpy
 import numpy as np
-import torch
 from PIL import Image
 from tqdm import tqdm
 
@@ -13,7 +12,7 @@ if __name__ == '__main__':
     process_short = True
     enhance_short_exposure = True
     result_folder = './../processed/Sony/short_linear_enhance/'
-    input_list_file = './data_lists/Sony_test_list_2.txt'
+    input_list_file = './data_lists/Sony_demo_list.txt'
     
     
     os.makedirs(result_folder, exist_ok=True)

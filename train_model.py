@@ -202,7 +202,7 @@ if __name__ == '__main__':
     
     dataloader_train = DataLoader(
         dataset_train, 
-        batch_size=opt.batch_size, 
+        batch_size=opt.train_batch_size, 
         shuffle=True, 
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 
     dataloader_val = DataLoader(
         dataset_val, 
-        batch_size=opt.validation_batch_size, 
+        batch_size=opt.forward_batch_size, 
         shuffle=False, 
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 
@@ -222,8 +222,8 @@ if __name__ == '__main__':
 
     print(f"{len_train_set} training images, {len_val_set} validation images.")
 
-    assert opt.effective_batch_size % opt.batch_size == 0
-    gradient_acc_total_steps = opt.effective_batch_size // opt.batch_size
+    assert opt.effective_batch_size % opt.train_batch_size == 0
+    gradient_acc_total_steps = opt.effective_batch_size // opt.train_batch_size
 
     for epoch_idx in range(start_epoch, opt.total_epochs):
         epoch_number = epoch_idx + 1
