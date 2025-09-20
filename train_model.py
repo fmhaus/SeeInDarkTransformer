@@ -135,10 +135,10 @@ if __name__ == '__main__':
         start_epoch = 0
         lr_schedule_first_epoch = 0
         model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial.pt')
-        model.to(device=device)
         
         print(f'Starting in epoch 1.')
     
+    model.to(device=device)
     model_uncompiled = model
     if opt.compile_model:
         torch.backends.cudnn.benchmark = True
