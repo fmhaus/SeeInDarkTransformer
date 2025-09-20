@@ -23,9 +23,6 @@ if __name__ == '__main__':
     print(f"CPU core count is {os.cpu_count()}.")
     print(opt)
 
-    # enable cuDNN benchmark mode to speed up training
-    torch.backends.cudnn.benchmark = True
-
     # set seeds
     random.seed(1234)
     np.random.seed(1234)
@@ -63,6 +60,8 @@ if __name__ == '__main__':
             'lr': opt.encoder_initial_lr,
             'weight_decay': opt.encoder_weight_decay
         })
+        for param in encoder_params:
+            param.requires_grad = True
     else:
         for param in encoder_params:
             param.requires_grad = False
@@ -76,6 +75,8 @@ if __name__ == '__main__':
                 'lr': opt.bottleneck_initial_lr,
                 'weight_decay': opt.bottleneck_weight_decay
             })
+        for param in bottleneck_params:
+            param.requires_grad = True
     else:
         for param in bottleneck_params:
             param.requires_grad = False
@@ -88,6 +89,8 @@ if __name__ == '__main__':
                 'lr': opt.decoder_initial_lr,
                 'weight_decay': opt.decoder_weight_decay
             })
+        for param in decoder_params:
+            param.requires_grad = True
     else:
         for param in decoder_params:
             param.requires_grad = False
@@ -138,6 +141,7 @@ if __name__ == '__main__':
     
     model_uncompiled = model
     if opt.compile_model:
+        torch.backends.cudnn.benchmark = True
         model = torch.compile(model)
         print('Model compile enabled.')
 
