@@ -103,6 +103,9 @@ if __name__ == '__main__':
         print('Auto mixed precision enabled.')
         scaler = torch.amp.GradScaler()
 
+    
+    best_psnr = 0.0
+
     # Resume
     if opt.resume_epoch != 0:
         
@@ -130,7 +133,13 @@ if __name__ == '__main__':
         else:
             # Restart warmup
             lr_schedule_first_epoch = start_epoch
-            
+        
+        best_log_file = os.path.join(opt.out_folder, f'log_best.json')
+        if os.path.isfile(best_log_file):
+            with open(best_log_file, 'r') as fr:
+                best_log = json.load(fr)
+                best_psnr = best_log['avg_val_psnr']
+        
         print(f'Resuming with epoch {start_epoch+1}.')
         
     else:
@@ -310,7 +319,7 @@ if __name__ == '__main__':
         total_loss = 0
         total_psnr = 0
         time_begin = time.time()
-            
+        
         with torch.no_grad():
             for batch_idx, ((raw_images, pack_settings), gt_images) in enumerate(tqdm(dataloader_val, f"Validation epoch {epoch_number}")):
                 batch_size = raw_images.shape[0]
@@ -341,5 +350,14 @@ if __name__ == '__main__':
         if epoch_number % opt.save_checkpoint_frequency == 0:
             torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_folder, f'model_checkpoint_{epoch_number}.pt'))
             torch.save(optimizer.state_dict(), os.path.join(opt.out_folder, f'optimizer_checkpoint_{epoch_number}.pt'))
+            print('Saved checkpoint.')
+        
+        if log['avg_val_psnr'] > best_psnr:
+            best_psnr = log['avg_val_psnr']
+            with open(os.path.join(opt.out_folder, f'log_best.json'), 'w')as fr:
+                fr.write(json.dumps(log))
+            torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_folder, f'model_checkpoint_best.pt'))
+            torch.save(optimizer.state_dict(), os.path.join(opt.out_folder, f'optimizer_checkpoint_best.pt'))
+            print('Saved new best.')
         
         print(f'Epoch {epoch_number}: Train loss {log['avg_train_loss']}, Validation loss {log['avg_val_loss']}, Validation PSNR {log['avg_val_psnr']}')
