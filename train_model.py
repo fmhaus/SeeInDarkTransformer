@@ -17,7 +17,7 @@ import argparse
 import options
 
 if __name__ == '__main__':
-    opt = options.Options().init(argparse.ArgumentParser()).parse_args()
+    opt = options.init_train(argparse.ArgumentParser()).parse_args()
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
     print(f"CPU core count is {os.cpu_count()}.")

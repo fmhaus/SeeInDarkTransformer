@@ -8,43 +8,64 @@ from torch.utils.data import DataLoader
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from models.sony_images import sid_original, sid_bottleneck_transformer, dataset
+from models.sony_images import sid_original, sid_bottleneck_transformer, sid_no_bottleneck, sid_bottleneck_transformer_4b_c, dataset
 from util import image_util
 import cv2
 
 import argparse
 import options
 
-OUT_FOLDER = './../processed2/Sony/sid_transformer_co1'
-PROCESS_FILES_OUT = False
-SHOW_PROCESSED_FILES = False
-DATASET_LIST = './data_lists/Sony_test_list_2.txt'
+MODEL_DICT = {
+    'sid_original': sid_original.Model,
+    'sid_bottleneck_transformer': sid_bottleneck_transformer.Model,
+    'sid_bottleneck_transformer_4b_c': sid_bottleneck_transformer_4b_c.Model,
+    'sid_no_bottleneck': sid_no_bottleneck.Model
+}
+
+DEFAULT_STATE_DICT = {
+    'sid_original': './models/sony_images/states/sid_original.pt',
+    'sid_bottleneck_transformer': None,
+    'sid_bottleneck_transformer_4b_c': './models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt',
+    'sid_no_bottleneck': './models/sony_images/states/sid_no_bottleneck.pt'
+}
 
 if __name__ == '__main__':
     
-    # Model
-    model = sid_bottleneck_transformer.Model()
-    model.load_state('./../training/co_adapt_1/model_checkpoint_30.pt')
+    opt = options.init_test(argparse.ArgumentParser()).parse_args()
+    print(opt)
     
-    opt = options.Options().init(argparse.ArgumentParser()).parse_args()
+    if opt.model not in MODEL_DICT:
+        raise RuntimeError(f'Invalid model {opt.model}')
     
-    print(f"Time now: {datetime.datetime.now().isoformat()}")
+    model = MODEL_DICT[opt.model]()
+    if opt.model_state and opt.model_state is not None:
+        model_state = opt.model_state
+    else:
+        model_state = DEFAULT_STATE_DICT[opt.model]
+        
+    state_dict = torch.load(model_state, map_location=torch.device('cpu'), weights_only=True)
+    model.load_state_dict(state_dict)
     
-
     use_cuda = torch.cuda.is_available()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if use_cuda else 'cpu')
+    print(f'Using device {'cuda' if use_cuda else 'cpu'}.')
+    
     model.to(device=device)
-    print(f'Using device {'cuda' if torch.cuda.is_available() else 'cpu'}.')
+    if opt.compile_model:
+        model = torch.compile(model)
+        print('Model compile enabled.')
+    
+    if opt.auto_mixed_precision:
+        print('Auto mixed precision enabled.')
 
     criterion = nn.L1Loss(reduction='none').to(device=device)
 
     # ---------- DataLoader ----------
     dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder)
     
-    with open(DATASET_LIST) as fr:
+    with open(opt.test_list) as fr:
         test_list = list(line.split(' ') for line in fr.readlines())
-        
-        
+    
     dataset_test = dataset.RawImageDataset(test_list, opt.dataset_folder, opt.preprocess_folder, give_meta=True, pack_augment_on_worker=False)
     dataloader_batch_size = opt.validation_batch_size
     dataloader_test = DataLoader(
@@ -65,7 +86,7 @@ if __name__ == '__main__':
     ids = []
     ratios = []
     
-    os.makedirs(OUT_FOLDER, exist_ok=True)
+    os.makedirs(opt.out_folder, exist_ok=True)
     
     time_begin = time.time()
         
@@ -81,7 +102,12 @@ if __name__ == '__main__':
             if dataset_test.transform is not None:
                 packed, gt_images = dataset_test.transform((packed, gt_images))
             
-            out_images = model(packed)
+            if opt.auto_mixed_precision:
+                with torch.amp.autocast(device.type):
+                    out_images = model(packed)
+            else:
+                out_images = model(packed)
+            
             out_images = out_images.clip(0.0, 1.0)
             
             loss = criterion(out_images, gt_images).mean(dim=[1, 2, 3])
@@ -93,21 +119,21 @@ if __name__ == '__main__':
             
             for i in range(batch_size):
                 ids.append(meta['id'][i])
-                ratios.append(meta['ratio'][i])
+                ratios.append(meta['ratio'][i].item())
             
             gt_np = image_util.tensor_to_images(gt_images)
             out_np = image_util.tensor_to_images(out_images)
             
-            if PROCESS_FILES_OUT:
+            if opt.save_images:
                 for i in range(batch_size):
-                    Image.fromarray(out_np[i]).save(os.path.join(OUT_FOLDER, f'{meta['id'][i]}_{int(meta['ratio'][i])}_out.png'))
-            if SHOW_PROCESSED_FILES:
+                    Image.fromarray(out_np[i]).save(os.path.join(opt.out_folder, f'{meta['id'][i]}_{int(meta['ratio'][i])}_out.png'))
+            if opt.show_images:
                 gt_np = image_util.images_flip_rgb_bgr(gt_np)
                 out_np = image_util.images_flip_rgb_bgr(out_np)
                 for i in range(batch_size):
                     im_gt = cv2.resize(gt_np[i], None, fx=0.2, fy=0.2)
                     im_out = cv2.resize(out_np[i], None, fx=0.2, fy=0.2)
-                cv2.imshow(f'{batch_idx*batch_size + i+1} {psnr[i]}', np.concatenate((im_gt, im_out), axis=1))
+                image_util.show_image(f'{batch_idx*batch_size + i+1} {psnr[i]}', np.concatenate((im_gt, im_out), axis=1))
                 
                 # need to give cp some sleep time
                 cv2.waitKey()
@@ -118,15 +144,17 @@ if __name__ == '__main__':
     
     results = {
         'total_time': time.time() - time_begin,
+        'model': f'{model.__class__.__module__}.{model.__class__.__name__}',
+        'model_state': model_state,
         'avg_psnr': psnrs.mean().item(),
         'avg_loss': losses.mean().item(),
-        'losses': losses.numpy(),
-        'psnrs': psnrs.numpy(),
+        'losses': losses.tolist(),
+        'psnrs': psnrs.tolist(),
         'ids': ids,
         'ratios': ratios
     }
     
-    with open(os.path.join(OUT_FOLDER, 'results.json'), 'w') as fw:
+    with open(os.path.join(opt.out_folder, 'results.json'), 'w') as fw:
         fw.write(json.dumps(results))
     
     print(f"Average PSNR: {results['avg_psnr']}, Average loss {results['avg_loss']}")

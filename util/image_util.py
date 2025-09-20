@@ -3,6 +3,13 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import math
+import cv2
+
+try:
+    from google.colab.patches import cv2_imshow
+    google_colab = True
+except:
+    google_colab = False
 
 def augment_mirror(item):
     in_image, gt_image = item
@@ -148,3 +155,13 @@ def depth_to_space(tensor, R):
     depth = tensor.view(N, R, R, C_out, H, W)
     space = depth.permute(0, 3, 4, 1, 5, 2).reshape(N, C_out, H*2, W*2)
     return space
+
+def show_image(title, image):
+    if google_colab:
+        if title:
+            print(title)
+        cv2_imshow(image)
+    else:
+        cv2.imshow(title, image)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
