@@ -4,8 +4,11 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
-LOGS_FOLDER = './../training/co_adapt_1/logs'
-TITLE = 'Learning (Co-Adapt, 1)'
+LOGS_FOLDER = './../training/co_adapt_3/logs'
+TITLE = 'Learning (Co-Adapt, 3)'
+
+LOSS_BENCHMARK = 0.030083592981100082
+PSNR_BENCHMARK = 28.586631774902344
 
 if __name__ == '__main__':
     
@@ -28,8 +31,6 @@ if __name__ == '__main__':
     fig, axes = plt.subplots(nrows=2, ncols=2)
     fig.suptitle(TITLE)
     
-    print(logs[0])
-    
     def show_graphs(index, title, keys):
         ax = axes[*index]
         for key in keys:
@@ -49,6 +50,12 @@ if __name__ == '__main__':
     ax_lr.set_title('Learning rates')
     ax_lr.set_xlabel('Epoch')
     ax_lr.legend()
+    
+    if LOSS_BENCHMARK is not None:
+        axes[0, 0].plot(x, np.full((len(logs)), LOSS_BENCHMARK), color='gray', linestyle='--')
+    
+    if PSNR_BENCHMARK is not None:
+        axes[1, 0].plot(x, np.full((len(logs)), PSNR_BENCHMARK), color='gray', linestyle='--')
     
     plt.tight_layout()
     plt.show()
