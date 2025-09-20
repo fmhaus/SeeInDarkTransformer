@@ -73,10 +73,10 @@ if __name__ == '__main__':
     if opt.bottleneck_initial_lr > 0:
         optimizer_param_group_indices[1] = len(optimizer_params)
         optimizer_params.append({
-                'params': bottleneck_params,
-                'lr': opt.bottleneck_initial_lr,
-                'weight_decay': opt.bottleneck_weight_decay
-            })
+            'params': bottleneck_params,
+            'lr': opt.bottleneck_initial_lr,
+            'weight_decay': opt.bottleneck_weight_decay
+        })
         for param in bottleneck_params:
             param.requires_grad = True
     else:
@@ -87,10 +87,10 @@ if __name__ == '__main__':
     if opt.decoder_initial_lr > 0:
         optimizer_param_group_indices[2] = len(optimizer_params)
         optimizer_params.append({
-                'params': decoder_params,
-                'lr': opt.decoder_initial_lr,
-                'weight_decay': opt.decoder_weight_decay
-            })
+            'params': decoder_params,
+            'lr': opt.decoder_initial_lr,
+            'weight_decay': opt.decoder_weight_decay
+        })
         for param in decoder_params:
             param.requires_grad = True
     else:
@@ -102,7 +102,6 @@ if __name__ == '__main__':
     if opt.auto_mixed_precision:
         print('Auto mixed precision enabled.')
         scaler = torch.amp.GradScaler()
-
     
     best_psnr = 0.0
 
