@@ -4,11 +4,12 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
-LOGS_FOLDER = './../training/finetune_4/logs'
-TITLE = 'Learning (Finetune, 4)'
+LOGS_FOLDER = './../training/co_adapt_3/logs'
+TITLE = 'SID Bottleneck transformer (3 Blocks, Co-adapt, v3)'
 
 LOSS_BENCHMARK = 0.030083592981100082
 PSNR_BENCHMARK = 28.586631774902344
+BENCHMARK_LABEL = 'sid_original_val'
 
 if __name__ == '__main__':
     
@@ -39,6 +40,12 @@ if __name__ == '__main__':
         ax.set_title(title)
         ax.set_xlabel('Epoch')
         ax.legend()
+        
+    if LOSS_BENCHMARK is not None:
+        axes[0, 0].plot(x, np.full((len(logs)), LOSS_BENCHMARK), label=BENCHMARK_LABEL, color='gray', linestyle='--')
+
+    if PSNR_BENCHMARK is not None:
+        axes[1, 0].plot(x, np.full((len(logs)), PSNR_BENCHMARK), label=BENCHMARK_LABEL, color='gray', linestyle='--')
     
     show_graphs((0, 0), 'Loss', ['avg_train_loss', 'avg_val_loss'])
     show_graphs((0, 1), 'Time', ['train_time', 'val_time'])
@@ -51,12 +58,6 @@ if __name__ == '__main__':
     ax_lr.set_title('Learning rates')
     ax_lr.set_xlabel('Epoch')
     ax_lr.legend()
-    
-    if LOSS_BENCHMARK is not None:
-        axes[0, 0].plot(x, np.full((len(logs)), LOSS_BENCHMARK), color='gray', linestyle='--')
-    
-    if PSNR_BENCHMARK is not None:
-        axes[1, 0].plot(x, np.full((len(logs)), PSNR_BENCHMARK), color='gray', linestyle='--')
     
     plt.tight_layout()
     plt.show()
