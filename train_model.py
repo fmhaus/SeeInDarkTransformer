@@ -211,7 +211,7 @@ if __name__ == '__main__':
 
     dataloader_val = DataLoader(
         dataset_val, 
-        batch_size=opt.forward_batch_size, 
+        batch_size=opt.validation_batch_size, 
         shuffle=False, 
         num_workers=opt.num_workers, 
         pin_memory=use_cuda, 

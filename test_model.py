@@ -67,7 +67,7 @@ if __name__ == '__main__':
         test_list = list(line.split(' ') for line in fr.readlines())
     
     dataset_test = dataset.RawImageDataset(test_list, opt.dataset_folder, opt.preprocess_folder, give_meta=True, pack_augment_on_worker=False)
-    dataloader_batch_size = opt.forward_batch_size
+    dataloader_batch_size = opt.validation_batch_size
     dataloader_test = DataLoader(
         dataset_test, 
         batch_size=dataloader_batch_size, 
