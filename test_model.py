@@ -24,7 +24,7 @@ MODEL_DICT = {
 
 DEFAULT_STATE_DICT = {
     'sid_original': './models/sony_images/states/sid_original.pt',
-    'sid_bottleneck_transformer': None,
+    'sid_bottleneck_transformer': './models/sony_images/states/sid_bottleneck_transformer_retrained.pt',
     'sid_bottleneck_transformer_4b_c': './models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt',
     'sid_no_bottleneck': './models/sony_images/states/sid_no_bottleneck.pt'
 }
