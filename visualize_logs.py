@@ -4,8 +4,8 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
-LOGS_FOLDER = './../training/co_adapt_3/logs'
-TITLE = 'Learning (Co-Adapt, 3)'
+LOGS_FOLDER = './../training/finetune_4/logs'
+TITLE = 'Learning (Finetune, 4)'
 
 LOSS_BENCHMARK = 0.030083592981100082
 PSNR_BENCHMARK = 28.586631774902344
@@ -19,14 +19,15 @@ if __name__ == '__main__':
         if match:
             epoch = int(match.group(1))
             with open(os.path.join(LOGS_FOLDER, filename), 'r') as fr:
-                log = json.load(fr)
+                log = json.loads(fr.read())
             index = epoch-1
             if len(logs) <= index:
                 logs = logs + [None] * (index + 1 - len(logs))
             
             logs[index] = log
     
-    x = np.arange(1, len(logs) + 1)
+    x = np.array([i for i, log in enumerate(logs) if log is not None])
+    logs = [log for log in logs if log is not None]
     
     fig, axes = plt.subplots(nrows=2, ncols=2)
     fig.suptitle(TITLE)
