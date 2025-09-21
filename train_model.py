@@ -340,6 +340,8 @@ if __name__ == '__main__':
         log['avg_val_psnr'] = total_psnr / len_val_set
         log['val_time'] = time.time() - time_begin
         
+        print(f'Epoch {epoch_number}: Train loss {log['avg_train_loss']}, Validation loss {log['avg_val_loss']}, Validation PSNR {log['avg_val_psnr']}')
+        
         # store logs and checkpoints
         
         os.makedirs(opt.out_folder, exist_ok=True)
@@ -358,5 +360,3 @@ if __name__ == '__main__':
             torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_folder, f'model_checkpoint_best.pt'))
             torch.save(optimizer.state_dict(), os.path.join(opt.out_folder, f'optimizer_checkpoint_best.pt'))
             print('Saved new best.')
-        
-        print(f'Epoch {epoch_number}: Train loss {log['avg_train_loss']}, Validation loss {log['avg_val_loss']}, Validation PSNR {log['avg_val_psnr']}')
