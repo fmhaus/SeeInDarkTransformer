@@ -65,6 +65,8 @@ class Benchmark:
         self.name = f'{model.__class__.__module__}.{model.__class__.__name__}'
         self.params = get_model_params(model)
         
+        model.to(device)
+        
         if compile_model:
             model = torch.compile(model)
             with torch.no_grad():
