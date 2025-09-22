@@ -67,7 +67,7 @@ class Benchmark:
         
         if compile_model:
             model = torch.compile(model)
-            model(get_random_input())
+            model(get_random_input(device))
         
         self.macs = get_model_macs(model, device)
         self.times, self.main_ram, self.vram = profile_forward_time_memory(model, device, n_runs)
