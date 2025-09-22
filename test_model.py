@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from models.sony_images import sid_original, sid_bottleneck_transformer, sid_no_bottleneck, sid_bottleneck_transformer_4b_c, dataset
+from models.sony_images import sid_bottleneck_transformer_3b, sid_original, sid_no_bottleneck, sid_bottleneck_transformer_4b_c, dataset
 from util import image_util
 import cv2
 
@@ -17,14 +17,14 @@ import options
 
 MODEL_DICT = {
     'sid_original': sid_original.Model,
-    'sid_bottleneck_transformer': sid_bottleneck_transformer.Model,
+    'sid_bottleneck_transformer': sid_bottleneck_transformer_3b.Model,
     'sid_bottleneck_transformer_4b_c': sid_bottleneck_transformer_4b_c.Model,
     'sid_no_bottleneck': sid_no_bottleneck.Model
 }
 
 DEFAULT_STATE_DICT = {
     'sid_original': './models/sony_images/states/sid_original.pt',
-    'sid_bottleneck_transformer': './models/sony_images/states/sid_bottleneck_transformer_retrained.pt',
+    'sid_bottleneck_transformer': './models/sony_images/states/sid_bottleneck_transformer_retrained_3b_e30.pt',
     'sid_bottleneck_transformer_4b_c': './models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt',
     'sid_no_bottleneck': './models/sony_images/states/sid_no_bottleneck.pt'
 }
