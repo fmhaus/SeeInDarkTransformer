@@ -77,5 +77,6 @@ class Model(torch.nn.Module):
         
         return image_util.depth_to_space(conv10, 2)
 
-    def load_state(self, path='./models/sony_images/states/sid_no_bottleneck.pt'):
-        self.load_state_dict(torch.load(path, weights_only=True))
+    def load_pretrained(self):
+        self.load_state_dict(torch.load('./models/sony_images/states/sid_no_bottleneck.pt', weights_only=True))
+        return 'sid_original'

@@ -42,8 +42,6 @@ class Model(torch.nn.Module):
         self.conv9_2 = nn.Conv2d(32, 32, 3, padding='same')
         
         self.conv10 = nn.Conv2d(32, 12, 1, padding='same')
-        
-        #self.activations = []
        
     def forward(self, x):
         conv1 = self.lrelu(self.conv1_1(x))
@@ -84,62 +82,7 @@ class Model(torch.nn.Module):
         conv10 = self.conv10(conv9)
         
         return image_util.depth_to_space(conv10, 2)
-        
-    """
-    
-    def forward(self, x):
-        conv1_1 = self.lrelu(self.conv1_1(x))
-        conv1_2 = self.lrelu(self.conv1_2(conv1_1))
-        pool1 = self.max_pool(conv1_2)
-        
-        conv2_1 = self.lrelu(self.conv2_1(pool1))
-        conv2_2 = self.lrelu(self.conv2_2(conv2_1))
-        pool2 = self.max_pool(conv2_2)
-         
-        conv3_1 = self.lrelu(self.conv3_1(pool2))
-        conv3_2 = self.lrelu(self.conv3_2(conv3_1))
-        pool3 = self.max_pool(conv3_2)
-    
-        conv4_1 = self.lrelu(self.conv4_1(pool3))
-        conv4_2 = self.lrelu(self.conv4_2(conv4_1))
-        pool4 = self.max_pool(conv4_2)
-        
-        conv5_1 = self.lrelu(self.conv5_1(pool4))
-        conv5_2 = self.lrelu(self.conv5_2(conv5_1))
-           
-        up6 = torch.cat((self.up6(conv5_2), conv4_2), dim = 1)
-        conv6_1 = self.lrelu(self.conv6_1(up6))
-        conv6_2 = self.lrelu(self.conv6_2(conv6_1))
-          
-        up7 = torch.cat((self.up7(conv6_2), conv3_2), dim = 1)
-        conv7_1 = self.lrelu(self.conv7_1(up7))
-        conv7_2 = self.lrelu(self.conv7_2(conv7_1))
-          
-        up8 = torch.cat((self.up8(conv7_2), conv2_2), dim = 1)
-        conv8_1 = self.lrelu(self.conv8_1(up8))
-        conv8_2 = self.lrelu(self.conv8_2(conv8_1))
-        
-        up9 = torch.cat((self.up9(conv8_2), conv1_2), dim = 1)
-        conv9_1 = self.lrelu(self.conv9_1(up9))
-        conv9_2 = self.lrelu(self.conv9_2(conv9_1))
-        
-        conv10 = self.conv10(conv9_2)
-        
-        self.activations =  [
-            conv1_1, conv1_2, pool1, 
-            conv2_1, conv2_2, pool2, 
-            conv3_1, conv3_2, pool3,
-            conv4_1, conv4_2, pool4,
-            conv5_1, conv5_2, 
-            up6, conv6_1, conv6_2,
-            up7, conv7_1, conv7_2,
-            up8, conv8_1, conv8_2,
-            up9, conv9_1, conv9_2,
-            conv10
-        ]
-        
-        return F.pixel_shuffle(conv10, 2)
-    """
 
-    def load_state(self, path='./models/sony_images/states/sid_original.pt'):
-        self.load_state_dict(torch.load(path, weights_only=True))
+    def load_pretrained(self):
+        self.load_state_dict(torch.load('./models/sony_images/states/sid_original.pt', weights_only=True))
+        return 'sid_original'

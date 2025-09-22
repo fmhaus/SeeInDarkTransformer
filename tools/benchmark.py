@@ -2,9 +2,8 @@ import sys
 import pathlib
 sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
 
-from models.sony_images import sid_bottleneck_transformer_3b, sid_original, sid_no_bottleneck
+from models.sony_images import sid_bottleneck_transformer, sid_original, sid_no_bottleneck
 import torch
-import torchprofile
 import os
 import psutil
 import gc
@@ -18,11 +17,6 @@ def get_random_input(device):
 
 def get_model_params(model):
     return sum(param.numel() for param in model.parameters())
-
-def get_model_macs(model, device):
-    with torch.no_grad():
-        input = get_random_input(device)
-        return torchprofile.profile_macs(model, input)
 
 def profile_forward_time_memory(model, device, n_runs):
     use_cuda = device.type == 'cuda'
@@ -66,8 +60,6 @@ class Benchmark:
         self.params = get_model_params(model)
         
         model.to(device)
-    
-        self.macs = get_model_macs(model, device)
         
         if compile_model:
             model = torch.compile(model)
@@ -80,10 +72,10 @@ class Benchmark:
         print("--------------------------------")
         print(f"Model: {self.name}")
         print(f"Parameters: {self.params}")
-        print(f"MACs: {self.macs}")
-        print(f"Time (avg, min, max) (s): {self.times.mean()}, {self.times.min()}, {self.times.max()}")
-        print(f"System memory (avg, min, max) (MB): {self.main_ram.mean()}, {self.main_ram.min()}, {self.main_ram.max()}")
-        print(f"GPU memory (avg, min, max) (MB): {self.vram.mean()}, {self.vram.min()}, {self.vram.max()}")
+        if len(self.times) != 0:
+            print(f"Time (avg, min, max) (s): {self.times.mean()}, {self.times.min()}, {self.times.max()}")
+            print(f"System memory (avg, min, max) (MB): {self.main_ram.mean()}, {self.main_ram.min()}, {self.main_ram.max()}")
+            print(f"GPU memory (avg, min, max) (MB): {self.vram.mean()}, {self.vram.min()}, {self.vram.max()}")
 
 def init_options(parser):
     parser.add_argument('--compile', action='store_true', default=False, help='Compiles the model before benchmarking')
@@ -100,9 +92,15 @@ if __name__ == "__main__":
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if use_cuda else 'cpu')
     
+    no_bottleneck = Benchmark(sid_no_bottleneck.Model(), device, opt.n_runs, compile_model)
+    transformer1 = Benchmark(sid_bottleneck_transformer.Model_2b(), device, opt.n_runs, compile_model)
+    transformer2 = Benchmark(sid_bottleneck_transformer.Model_3b(), device, opt.n_runs, compile_model)
+    transformer3 = Benchmark(sid_bottleneck_transformer.Model_4b_c(), device, opt.n_runs, compile_model)
     original = Benchmark(sid_original.Model(), device, opt.n_runs, compile_model)
-    transformer = Benchmark(sid_bottleneck_transformer_3b.Model(), device, opt.n_runs,compile_model)
     
     print(f'Compile: {compile_model}')
+    no_bottleneck.print_results()
+    transformer1.print_results()
+    transformer2.print_results()
+    transformer3.print_results()
     original.print_results()
-    transformer.print_results()

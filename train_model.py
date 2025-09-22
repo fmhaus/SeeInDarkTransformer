@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from tqdm import tqdm
-from models.sony_images import dataset, sid_bottleneck_transformer_3b
+from models.sony_images import dataset, sid_bottleneck_transformer
 from util import image_util
 
 import argparse
@@ -32,7 +32,8 @@ if __name__ == '__main__':
     torch.cuda.manual_seed_all(1234)
 
     # Model
-    model = sid_bottleneck_transformer_3b.Model(attn_dropout=opt.attn_dropout, mlp_dropout=opt.mlp_dropout)
+    model = sid_bottleneck_transformer.Model_2b()
+    model.set_transformer_dropout(opt.attn_dropout, opt.mlp_dropout)
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

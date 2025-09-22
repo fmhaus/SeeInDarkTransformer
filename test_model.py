@@ -8,43 +8,26 @@ from torch.utils.data import DataLoader
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from models.sony_images import sid_bottleneck_transformer_3b, sid_original, sid_no_bottleneck, sid_bottleneck_transformer_4b_c, dataset
+from models.sony_images import get_model_class, dataset
 from util import image_util
 import cv2
 
 import argparse
 import options
 
-MODEL_DICT = {
-    'sid_original': sid_original.Model,
-    'sid_bottleneck_transformer': sid_bottleneck_transformer_3b.Model,
-    'sid_bottleneck_transformer_4b_c': sid_bottleneck_transformer_4b_c.Model,
-    'sid_no_bottleneck': sid_no_bottleneck.Model
-}
-
-DEFAULT_STATE_DICT = {
-    'sid_original': './models/sony_images/states/sid_original.pt',
-    'sid_bottleneck_transformer': './models/sony_images/states/sid_bottleneck_transformer_retrained_3b_e30.pt',
-    'sid_bottleneck_transformer_4b_c': './models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt',
-    'sid_no_bottleneck': './models/sony_images/states/sid_no_bottleneck.pt'
-}
-
 if __name__ == '__main__':
     
     opt = options.init_test(argparse.ArgumentParser()).parse_args()
     print(opt)
     
-    if opt.model not in MODEL_DICT:
-        raise RuntimeError(f'Invalid model {opt.model}')
-    
-    model = MODEL_DICT[opt.model]()
-    if opt.model_state and opt.model_state is not None:
+    model = get_model_class(opt.model)
+    if opt.model_state is not None and opt.model_state != '':
         model_state = opt.model_state
+        state_dict = torch.load(opt.model_state, map_location=torch.device('cpu'), weights_only=True)
+        model.load_state_dict(state_dict)
     else:
-        model_state = DEFAULT_STATE_DICT[opt.model]
-        
-    state_dict = torch.load(model_state, map_location=torch.device('cpu'), weights_only=True)
-    model.load_state_dict(state_dict)
+        model_state = model.load_pretrained()
+    
     
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if use_cuda else 'cpu')

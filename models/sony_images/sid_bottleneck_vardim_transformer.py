@@ -5,7 +5,7 @@ import math
 from util import image_util
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim_model, n_heads, attn_dropout=0.1, mlp_dropout=0.1, dim_ff=None):
+    def __init__(self, dim_model, n_heads, attn_dropout=0.0, mlp_dropout=0.0, dim_ff=None):
         super().__init__()
         
         dim_ff = dim_ff or 4 * dim_model
@@ -15,7 +15,7 @@ class TransformerBlock(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(dim_model, dim_ff),
             nn.GELU(),
-            nn.Dropout(attn_dropout),
+            nn.Dropout(mlp_dropout),
             nn.Linear(dim_ff, dim_model)
         )
         
@@ -38,6 +38,13 @@ class TransformerBlock(nn.Module):
         
         return x
     
+    def set_dropout(self, attn_dropout, mlp_dropout):
+        self.dropout1.p = attn_dropout
+        self.attention.dropout = attn_dropout
+        
+        self.dropout2.p = mlp_dropout
+        self.mlp[2].p = mlp_dropout
+    
     # Truncation normal initialization
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -49,14 +56,14 @@ class TransformerBlock(nn.Module):
             nn.init.zeros_(m.bias)
 
 class TransformerBottleneck(nn.Module):
-    def __init__(self, n_transformer_blocks, in_channels, dim_model, attn_dropout=0.1, mlp_dropout=0.1):
+    def __init__(self, n_transformer_blocks, in_channels, dim_model):
         super().__init__()
         
         self.down = nn.Conv2d(in_channels, dim_model, 2, stride=2)
         
         self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((45, 67), dim_model), persistent=False)
         
-        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4, attn_dropout, mlp_dropout) for _ in range(n_transformer_blocks)])
+        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4) for _ in range(n_transformer_blocks)])
         
         self.up = nn.ConvTranspose2d(dim_model, in_channels, 2, stride=2)
     
@@ -78,6 +85,10 @@ class TransformerBottleneck(nn.Module):
         reshaped = embeddings.transpose(1, 2).reshape(down_shape)
         up = self.up(reshaped)
         return self.crop_like(up, (h, w))
+    
+    def set_dropout(self, attn_dropout, mlp_dropout):
+        for block in self.blocks:
+            block.set_dropout(attn_dropout, mlp_dropout)
     
     def pad_to_even(self, x):
         _, _, H, W = x.shape
@@ -109,7 +120,7 @@ class TransformerBottleneck(nn.Module):
         return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2).view(h*w, dim_model)
 
 class Model(nn.Module):
-    def __init__(self, attn_dropout=0.1, mlp_dropout=0.1):
+    def __init__(self, transformer_blocks):
         super().__init__()
         
         self.lrelu = nn.LeakyReLU(negative_slope=0.2)
@@ -127,7 +138,7 @@ class Model(nn.Module):
         self.conv4_1 = nn.Conv2d(128, 256, 3, padding='same')
         self.conv4_2 = nn.Conv2d(256, 256, 3, padding='same')
         
-        self.bottleneck5 = TransformerBottleneck(3, 256, 256, attn_dropout=attn_dropout, mlp_dropout=mlp_dropout)
+        self.bottleneck5 = TransformerBottleneck(transformer_blocks, 256, 256)
                 
         self.up6 = nn.ConvTranspose2d(512, 256, 2, stride=2, bias=False)
         self.conv6_1 = nn.Conv2d(512, 256, 3, padding='same')
@@ -174,9 +185,6 @@ class Model(nn.Module):
         
         bottleneck5 = self.bottleneck5(pool4)
         
-        # adding a skip connection around the transformer bottleneck
-        # Im unsure about this one because it can cause the model to just ignore transformer features 
-        # and only rely on the skip connection
         out5 = torch.cat((bottleneck5, pool4), dim=1)
         # [N, 256, 89, 133]
            
@@ -205,6 +213,16 @@ class Model(nn.Module):
         
         # depth_to_space in pytorch
         return image_util.depth_to_space(conv10, 2)
-        
+    
+    def set_transformer_dropout(self, attn_dropout, mlp_dropout):
+        self.bottleneck5.set_dropout(attn_dropout, mlp_dropout)
+    
     def load_state(self, path):
         self.load_state_dict(torch.load(path, weights_only=True))
+
+class Model_2b(Model):
+    def __init__(self):
+        super().__init__(2)
+    
+    def load_pretrained(self):
+        raise RuntimeError('No pretrained model')
