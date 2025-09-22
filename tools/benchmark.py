@@ -66,13 +66,14 @@ class Benchmark:
         self.params = get_model_params(model)
         
         model.to(device)
+    
+        self.macs = get_model_macs(model, device)
         
         if compile_model:
             model = torch.compile(model)
             with torch.no_grad():
                 model(get_random_input(device))
         
-        self.macs = get_model_macs(model, device)
         self.times, self.main_ram, self.vram = profile_forward_time_memory(model, device, n_runs)
 
     def print_results(self):
