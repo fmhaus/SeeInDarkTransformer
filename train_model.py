@@ -4,6 +4,7 @@ import os
 import time
 import json
 import datetime
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,18 +13,42 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from tqdm import tqdm
 from models.sony_images import dataset, sid_bottleneck_transformer
 from util import image_util
+import config
 
-import argparse
-import options
+
+def init_options(parser):
+    config.init_common_args(parser)
+    
+    # train parameters
+    parser.add_argument('--resume_epoch', type=int, default=0, help='epoch to resume training from (0 = train from zero)')
+    parser.add_argument('--total_epochs', type=int, default=200, help='toal number of epochs')
+    parser.add_argument('--warmup_epochs', type=int, default=5, help='number of warmup epochs (0 = no warmup)')
+    parser.add_argument('--augment_images_epoch', type=int, default=5, help='After what epoch images should be augmented (with random crops and flips)')
+    parser.add_argument('--load_optimizer', action='store_true', default=False, help='Whether to load the optimizer (and lr schedule) when using resume or not')
+    parser.add_argument('--save_checkpoint_frequency', type=int, default=1, help='After how many epochs the model and optimizer checkpoints should be saved')
+    parser.add_argument('--effective_batch_size', type=int, default=24, help='number of images processed before updating weights')
+    parser.add_argument('--encoder_initial_lr', type=float, default=1e-4, help='Initial learning rate for encoder (0: encoder frozen)')
+    parser.add_argument('--bottleneck_initial_lr', type=float, default=1e-4, help='Initial learning rate for bottleneck (0: bottleneck frozen)')
+    parser.add_argument('--decoder_initial_lr', type=float, default=1e-4, help='Initial learning rate for decoder (0: decoder frozen)')
+    parser.add_argument('--encoder_weight_decay', type=float, default=0, help='Weight decay for encoder')
+    parser.add_argument('--bottleneck_weight_decay', type=float, default=0, help='Weight decay for bottleneck')
+    parser.add_argument('--decoder_weight_decay', type=float, default=0, help='Weight decay for decoder')
+    parser.add_argument('--mlp_dropout', type=float, default=0.1, help='Dropout value for the Transformer MLP')
+    parser.add_argument('--attn_dropout', type=float, default=0.1, help='Dropout value for the Transformer Attention')
+       
+    return parser
 
 if __name__ == '__main__':
-    opt = options.init_train(argparse.ArgumentParser()).parse_args()
+    
+    opt = init_options(argparse.ArgumentParser()).parse_args()
+    device_cfg = config.DeviceConfig(opt.device_config)
     
     print(f"Time now: {datetime.datetime.now().isoformat()}")
     print(f"CPU core count is {os.cpu_count()}.")
     print(opt)
     
-    torch.backends.cudnn.benchmark = True
+    if device_cfg.compile_model:
+        torch.backends.cudnn.benchmark = True
 
     # set seeds
     random.seed(1234)
@@ -35,9 +60,8 @@ if __name__ == '__main__':
     model = sid_bottleneck_transformer.Model_2b()
     model.set_transformer_dropout(opt.attn_dropout, opt.mlp_dropout)
 
-    use_cuda = torch.cuda.is_available()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'Using device {'cuda' if torch.cuda.is_available() else 'cpu'}.')
+    device = torch.device('cuda' if device_cfg.use_cuda else 'cpu')
+    print(f'Using device {'cuda' if device_cfg.use_cuda else 'cpu'}.')
     
     # Optimizer
     encoder_params = []
@@ -100,7 +124,7 @@ if __name__ == '__main__':
         print('Decoder frozen')
     
     optimizer = torch.optim.AdamW(optimizer_params)
-    if opt.auto_mixed_precision:
+    if device_cfg.auto_mixed_precision:
         print('Auto mixed precision enabled.')
         scaler = torch.amp.GradScaler()
     
@@ -151,7 +175,7 @@ if __name__ == '__main__':
     
     model.to(device=device)
     model_uncompiled = model
-    if opt.compile_model:
+    if device_cfg.compile_model:
         model = torch.compile(model)
         print('Model compile enabled.')
 
@@ -182,10 +206,10 @@ if __name__ == '__main__':
 
     # ---------- DataLoader ----------
     
-    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder, opt.num_workers)
+    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder, device_cfg.num_workers)
     
-    if opt.preload_gts:
-        gt_data = dataset.GTDict(opt.preprocess_folder, opt.num_workers)
+    if device_cfg.preload_gts:
+        gt_data = dataset.GTDict(opt.preprocess_folder, device_cfg.num_workers)
     else:
         gt_data = opt.preprocess_folder
         
@@ -202,28 +226,28 @@ if __name__ == '__main__':
     
     dataloader_train = DataLoader(
         dataset_train, 
-        batch_size=opt.train_batch_size, 
+        batch_size=device_cfg.train_batch_size, 
         shuffle=True, 
-        num_workers=opt.num_workers, 
-        pin_memory=use_cuda, 
+        num_workers=device_cfg.num_workers, 
+        pin_memory=device_cfg.use_cuda, 
         drop_last=True, 
         persistent_workers=not dataset_train.pack_augment_on_worker
     )
 
     dataloader_val = DataLoader(
         dataset_val, 
-        batch_size=opt.validation_batch_size, 
+        batch_size=device_cfg.validation_batch_size, 
         shuffle=False, 
-        num_workers=opt.num_workers, 
-        pin_memory=use_cuda, 
+        num_workers=device_cfg.num_workers, 
+        pin_memory=device_cfg.use_cuda, 
         drop_last=False, 
         persistent_workers=not dataset_val.pack_augment_on_worker
     )
 
     print(f"{len_train_set} training images, {len_val_set} validation images.")
 
-    assert opt.effective_batch_size % opt.train_batch_size == 0
-    gradient_acc_total_steps = opt.effective_batch_size // opt.train_batch_size
+    assert opt.effective_batch_size % device_cfg.train_batch_size == 0
+    gradient_acc_total_steps = opt.effective_batch_size // device_cfg.train_batch_size
 
     for epoch_idx in range(start_epoch, opt.total_epochs):
         epoch_number = epoch_idx + 1
@@ -242,7 +266,7 @@ if __name__ == '__main__':
         log['epoch'] = epoch_number
         log['lr_schedule_first_epoch'] = lr_schedule_first_epoch
         log['learning_rates'] = [optimizer.param_groups[optimizer_param_group_indices[i]]['lr'] if optimizer_param_group_indices[i] != -1 else 0 for i in range(3)]
-        log['auto_mixed_precision'] = opt.auto_mixed_precision
+        log['auto_mixed_precision'] = device_cfg.auto_mixed_precision
         log['augment_images'] = augment_images
         
         # ---------- train ----------
@@ -267,7 +291,7 @@ if __name__ == '__main__':
                 if dataset_train.transform is not None:
                     packed, gt_images = dataset_train.transform((packed, gt_images))
             
-            if opt.auto_mixed_precision:
+            if device_cfg.auto_mixed_precision:
                 with torch.amp.autocast(device.type):
                     out_images = model(packed)
                     loss = criterion(out_images, gt_images)
@@ -279,7 +303,7 @@ if __name__ == '__main__':
             total_loss += loss.item() * batch_size
             loss = loss / gradient_acc_total_steps
             
-            if opt.auto_mixed_precision:
+            if device_cfg.auto_mixed_precision:
                 scaler.scale(loss).backward()
             else:
                 loss.backward()
@@ -287,7 +311,7 @@ if __name__ == '__main__':
             gradient_acc += 1
             if gradient_acc == gradient_acc_total_steps:
                 # update weights and reset gradients
-                if opt.auto_mixed_precision:
+                if device_cfg.auto_mixed_precision:
                     scaler.unscale_(optimizer)
                     scaler.step(optimizer)
                     scaler.update()
@@ -299,7 +323,7 @@ if __name__ == '__main__':
         
         # handle accumulated gradients after last update
         if gradient_acc != 0:
-            if opt.auto_mixed_precision:
+            if device_cfg.auto_mixed_precision:
                 scaler.unscale_(optimizer)
                 scaler.step(optimizer)
                 scaler.update()

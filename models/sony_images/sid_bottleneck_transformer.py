@@ -224,7 +224,7 @@ class Model(nn.Module):
         self.bottleneck5.set_dropout(attn_dropout, mlp_dropout)
     
     def load_state(self, path):
-        self.load_state_dict(torch.load(path, weights_only=True))
+        self.load_state_dict(torch.load(path, weights_only=True, map_location=torch.device('cpu')))
 
 class Model_2b(Model):
     def __init__(self):
@@ -238,7 +238,8 @@ class Model_3b(Model):
         super().__init__(3, False)
     
     def load_pretrained(self):
-        super().load_state('models/sony_images/states/sid_bottleneck_transformer_retrained_3b_e30.pt')
+        path = 'models/sony_images/states/sid_bottleneck_transformer_retrained_3b_e30.pt'
+        super().load_state(path)
         return '3b_e30'
 
 class Model_4b_c(Model):
@@ -246,5 +247,6 @@ class Model_4b_c(Model):
         super().__init__(4, True)
         
     def load_pretrained(self):
-        super().load_state('models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt')
-        return '4b_c'
+        path = 'models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt'
+        super().load_state(path)
+        return path

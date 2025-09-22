@@ -1,62 +1,71 @@
 import os
 import time
-import datetime
 import json
 import torch
+import argparse
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import numpy as np
+import cv2
 from PIL import Image
 from tqdm import tqdm
 from models.sony_images import get_model_class, dataset
 from util import image_util
-import cv2
+import config
 
-import argparse
-import options
+def init_options(parser):
+    config.init_common_args(parser)
+    
+    parser.add_argument('--model', type=str, default='sid_original', help='What model to use')
+    parser.add_argument('--model_state', type=str, help='The model state_dict file')
+    parser.add_argument('--test_list', type=str, default='./data_lists/Sony_demo_list.txt', help='The list file to process')
+    parser.add_argument('--save_images', action='store_true', default=False, help='Whether to store the result images')
+    parser.add_argument('--show_images', action='store_true', default=False, help='Whether to show the images as processed')
+    
+    return parser
 
 if __name__ == '__main__':
     
-    opt = options.init_test(argparse.ArgumentParser()).parse_args()
+    opt = init_options(argparse.ArgumentParser()).parse_args()
     print(opt)
     
+    device_cfg = config.DeviceConfig(opt.device_config)
+    
     model = get_model_class(opt.model)
-    if opt.model_state is not None and opt.model_state != '':
+    if opt.model_state is not None:
         model_state = opt.model_state
         state_dict = torch.load(opt.model_state, map_location=torch.device('cpu'), weights_only=True)
         model.load_state_dict(state_dict)
     else:
         model_state = model.load_pretrained()
     
-    
-    use_cuda = torch.cuda.is_available()
-    device = torch.device('cuda' if use_cuda else 'cpu')
-    print(f'Using device {'cuda' if use_cuda else 'cpu'}.')
+    device = torch.device('cuda' if device_cfg.use_cuda else 'cpu')
+    print(f'Using device {'cuda' if device_cfg.use_cuda else 'cpu'}.')
     
     model.to(device=device)
-    if opt.compile_model:
+    if device_cfg.compile_model:
         model = torch.compile(model)
         print('Model compile enabled.')
     
-    if opt.auto_mixed_precision:
+    if device_cfg.auto_mixed_precision:
         print('Auto mixed precision enabled.')
 
     criterion = nn.L1Loss(reduction='none').to(device=device)
 
     # ---------- DataLoader ----------
-    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder)
+    dataset.preprocess_raw_gts(os.path.join(opt.dataset_folder, 'Sony', 'long'), opt.preprocess_folder, device_cfg.num_workers)
     
     with open(opt.test_list) as fr:
         test_list = list(line.split(' ') for line in fr.readlines())
     
     dataset_test = dataset.RawImageDataset(test_list, opt.dataset_folder, opt.preprocess_folder, give_meta=True, pack_augment_on_worker=False)
-    dataloader_batch_size = opt.validation_batch_size
+    dataloader_batch_size = device_cfg.validation_batch_size
     dataloader_test = DataLoader(
         dataset_test, 
         batch_size=dataloader_batch_size, 
         shuffle=False, 
         num_workers=opt.num_workers, 
-        pin_memory=use_cuda, 
+        pin_memory=device_cfg.use_cuda, 
         drop_last=False, 
         persistent_workers=False
     )
@@ -82,10 +91,8 @@ if __name__ == '__main__':
             gt_images = gt_images.to(device, non_blocking=True, dtype=torch.float32)
             
             packed = dataset.pack_raw(raw_images, pack_settings)
-            if dataset_test.transform is not None:
-                packed, gt_images = dataset_test.transform((packed, gt_images))
             
-            if opt.auto_mixed_precision:
+            if device_cfg.auto_mixed_precision:
                 with torch.amp.autocast(device.type):
                     out_images = model(packed)
             else:
