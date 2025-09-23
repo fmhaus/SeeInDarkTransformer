@@ -1,14 +1,14 @@
 import sys
-import pathlib
-sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import numpy as np
 import torch
 import os
-from models.sony_images import sid_bottleneck_transformer, sid_original, sid_no_bottleneck
+from models.sony_images import sid_bottleneck_transformer
 
 EXPORT_DIR = './models/sony_images/states/tf_export/'
-MODEL_STATE_FILE= './models/sony_images/states/sid_bottleneck_transformer_initial.pt'
+MODEL_STATE_FILE= './models/sony_images/states/sid_bottleneck_transformer_initial_2b.pt'
 IMPORT_BOTTLENECK = False
 
 ENCODER_DECODER_MAP = {
@@ -70,7 +70,7 @@ BOTTLENECK_MAP = {
     'g_conv5_2\\biases.npy': 'conv5_2.bias',
 }
 
-model = sid_bottleneck_transformer.Model()
+model = sid_bottleneck_transformer.Model_2b()
 state_dict = model.state_dict()
 
 for root, dirs, files in os.walk(EXPORT_DIR):

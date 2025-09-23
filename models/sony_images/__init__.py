@@ -1,4 +1,4 @@
-import sid_bottleneck_transformer, sid_no_bottleneck, sid_original
+from models.sony_images import sid_bottleneck_transformer, sid_no_bottleneck, sid_original
 
 _MODEL_DICT = {
     'sid_original': sid_original.Model,

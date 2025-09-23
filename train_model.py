@@ -169,7 +169,7 @@ if __name__ == '__main__':
     else:
         start_epoch = 0
         lr_schedule_first_epoch = 0
-        model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial.pt')
+        model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial_2b.pt')
         
         print(f'Starting in epoch 1.')
     
