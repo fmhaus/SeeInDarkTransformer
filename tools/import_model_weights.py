@@ -8,7 +8,7 @@ import os
 from models.sony_images import sid_bottleneck_transformer
 
 EXPORT_DIR = './models/sony_images/states/tf_export/'
-MODEL_STATE_FILE= './models/sony_images/states/sid_bottleneck_transformer_initial_2b.pt'
+MODEL_STATE_FILE= './models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt'
 IMPORT_BOTTLENECK = False
 
 ENCODER_DECODER_MAP = {
@@ -70,7 +70,7 @@ BOTTLENECK_MAP = {
     'g_conv5_2\\biases.npy': 'conv5_2.bias',
 }
 
-model = sid_bottleneck_transformer.Model_2b()
+model = sid_bottleneck_transformer.Model_2b_c()
 state_dict = model.state_dict()
 
 for root, dirs, files in os.walk(EXPORT_DIR):

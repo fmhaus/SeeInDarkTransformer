@@ -232,6 +232,13 @@ class Model_2b(Model):
     
     def load_pretrained(self):
         raise RuntimeError('No pretrained model')
+    
+class Model_2b_c(Model):
+    def __init__(self):
+        super().__init__(2, True)
+    
+    def load_pretrained(self):
+        raise RuntimeError('No pretrained model')
 
 class Model_3b(Model):
     def __init__(self):
