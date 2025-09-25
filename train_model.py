@@ -244,6 +244,7 @@ if __name__ == '__main__':
         persistent_workers=not dataset_val.pack_augment_on_worker
     )
 
+    os.makedirs(opt.out_folder, exist_ok=True)
     print(f"{len_train_set} training images, {len_val_set} validation images.")
 
     assert opt.effective_batch_size % device_cfg.train_batch_size == 0
@@ -373,7 +374,6 @@ if __name__ == '__main__':
         
         # store logs and checkpoints
         
-        os.makedirs(opt.out_folder, exist_ok=True)
         with open(os.path.join(opt.out_folder, f'log_{epoch_number}.json'), 'w')as fr:
             fr.write(json.dumps(log))
         
