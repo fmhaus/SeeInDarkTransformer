@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from tqdm import tqdm
 from models.sony_images import dataset, sid_bottleneck_transformer, get_model_class
-from util import image_util
+from util import amp_util, image_util
 import config
 
 def init_options(parser):
@@ -168,7 +168,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(optimizer_params)
     if optimizer_checkpoint is not None:
         optimizer.load_state_dict(optimizer_checkpoint)
-        
+    
     if device_cfg.auto_mixed_precision:
         print('Auto mixed precision enabled.')
         scaler = torch.amp.GradScaler()
@@ -290,32 +290,20 @@ if __name__ == '__main__':
             raw_images = raw_images.to(device, non_blocking=True)
             pack_settings = {key: value.to(device, non_blocking=True) for key, value in pack_settings.items()}
             gt_images = gt_images.to(device, non_blocking=True)
-            
-            with torch.no_grad():
-            
-                if device_cfg.auto_mixed_precision:
-                    with torch.amp.autocast(device.type):
-                
-                        packed = dataset.pack_raw(raw_images, pack_settings)
-                    
-                        if dataset_train.transform is not None:
-                            packed, gt_images = dataset_train.transform((packed, gt_images))
-                        else:
-                            packed = packed.to(torch.float32)
-                
-                        out_images = model(packed)
-                        loss = criterion(out_images, gt_images)
-                else:
+
+            # AMP but only if set in device config
+            with amp_util.MaybeAMP(device, device_cfg.auto_mixed_precision):
+        
+                with torch.no_grad():
                     packed = dataset.pack_raw(raw_images, pack_settings)
-                    
+                
                     if dataset_train.transform is not None:
                         packed, gt_images = dataset_train.transform((packed, gt_images))
                     else:
                         packed = packed.to(torch.float32)
-                    
-                    out_images = model(packed)
-                    loss = criterion(out_images, gt_images)
-                
+        
+                out_images = model(packed)
+                loss = criterion(out_images, gt_images)
                 
             total_loss += loss.item() * batch_size
             loss = loss / gradient_acc_total_steps
