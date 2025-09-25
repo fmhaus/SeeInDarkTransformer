@@ -171,7 +171,7 @@ if __name__ == '__main__':
     
     if device_cfg.auto_mixed_precision:
         print('Auto mixed precision enabled.')
-        grad_scaler = torch.amp.Gradgrad_scaler()
+        grad_scaler = torch.amp.grad_scaler()
 
     # Scheduler
     warmup_scheduler = LinearLR(
