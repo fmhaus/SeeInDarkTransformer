@@ -66,7 +66,6 @@ if __name__ == '__main__':
     if opt.resume_epoch != 0:
         
         # load log and model
-        start_epoch = opt.resume_epoch
         
         with open(os.path.join(opt.out_folder, f'log_{opt.resume_epoch}.json'), 'r') as fr:
             log = json.load(fr)
@@ -86,7 +85,7 @@ if __name__ == '__main__':
             print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
         else:
             # Restart warmup
-            lr_schedule_first_epoch = start_epoch
+            lr_schedule_first_epoch = opt.resume_epoch
             optimizer_checkpoint = None
         
         best_log_file = os.path.join(opt.out_folder, f'log_best.json')
@@ -95,10 +94,9 @@ if __name__ == '__main__':
                 best_log = json.load(fr)
                 best_psnr = best_log['avg_val_psnr']
         
-        print(f'Resuming in epoch {start_epoch+1}.')
+        print(f'Resuming in epoch {opt.resume_epoch+1}.')
         
     else:
-        start_epoch = 0
         lr_schedule_first_epoch = 0
         model_checkpoint = torch.load('./models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt', weights_only=True, map_location=device)
         optimizer_checkpoint = None
@@ -188,12 +186,14 @@ if __name__ == '__main__':
     
     scheduler = SequentialLR(
         optimizer,
-        last_epoch=start_epoch - lr_schedule_first_epoch,
         schedulers=[warmup_scheduler, cosine_scheduler],
         milestones=[opt.warmup_epochs+1]
     )
+    
+    for _ in opt.resume_epoch:
+        scheduler.step()
 
-    print(f'Starting LR schedule on epoch {start_epoch - lr_schedule_first_epoch + 1}.')
+    print(f'Starting LR schedule on epoch {opt.resume_epoch - lr_schedule_first_epoch + 1}.')
 
     model.set_transformer_dropout(opt.attn_dropout, opt.mlp_dropout)
     
@@ -254,7 +254,7 @@ if __name__ == '__main__':
     with open(os.path.join(opt.out_folder, 'options.json'), 'w') as fr:
         fr.write(str(opt))
 
-    for epoch_idx in range(start_epoch, opt.total_epochs):
+    for epoch_idx in range(opt.resume_epoch, opt.total_epochs):
         epoch_number = epoch_idx + 1
         
         if epoch_number >= opt.augment_images_epoch:
