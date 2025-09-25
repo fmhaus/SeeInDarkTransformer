@@ -251,7 +251,7 @@ if __name__ == '__main__':
     gradient_acc_total_steps = opt.effective_batch_size // device_cfg.train_batch_size
 
     with open(os.path.join(opt.out_folder, 'options.json'), 'w') as fr:
-        fr.write(json.dumps(opt))
+        fr.write(str(opt))
 
     for epoch_idx in range(start_epoch, opt.total_epochs):
         epoch_number = epoch_idx + 1
