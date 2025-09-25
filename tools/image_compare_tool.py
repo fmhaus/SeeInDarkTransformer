@@ -43,13 +43,11 @@ class ImageView:
         self.comparison_text = None
     
     def get_image(self):
-        # get image if stored, otherwise ask future if finished
+        # get image if stored, otherwise wait for future if finished
         if self.image is not None:
             return self.image
-        if self.future.done():
-            self.image = self.future.result()
-            return self.image
-        return None
+        self.image = self.future.result()
+        return self.image
     
     def set_gt(self):
         self.comparison_text = 'GT'
@@ -64,7 +62,7 @@ class ImageView:
 class ImageCompareApp:
     def __init__(self, root):
         self.root = root
-        self.show_after_resize_callback = None
+        self.redraw_after_resize_callback = None
         
         # use thread pool for parallel and async image loading
         self.loader = ThreadPoolExecutor(4)
@@ -73,7 +71,7 @@ class ImageCompareApp:
         self.image_sources = [None, None, None, None]
         self.image_views = [None, None, None, None]
         self.key_list = []
-        self.current_key = None
+        self.key_index = None
         self.gt_index = None
         self.initial_dir = './'
         self.prefix_length = 8
@@ -145,30 +143,30 @@ class ImageCompareApp:
                 
                 self.update_key_list([i for i in range(4) if self.image_sources[i]])
                 if 'key_index' in settings and type(settings['key_index']) == int and len(self.key_list) > 0:
-                    self.current_key = min(int(settings['key_index']), len(self.key_list))
+                    self.key_index = min(int(settings['key_index']), len(self.key_list))
                 if 'gt_index' in settings and type(settings['gt_index']) == int:
                     self.gt_index = settings['gt_index']
 
                 self.load_images()
 
-        self.show()
+        self.redraw()
 
     def on_resize(self, _):
         # recreate canvas 100ms after resize is ended to prevent repeated canvas creations
-        if self.show_after_resize_callback is not None:
-            self.root.after_cancel(self.show_after_resize_callback)
-        self.show_after_resize_callback = self.root.after(100, self.after_resize)
+        if self.redraw_after_resize_callback is not None:
+            self.root.after_cancel(self.redraw_after_resize_callback)
+        self.redraw_after_resize_callback = self.root.after(100, self.after_resize)
         
     def after_resize(self):
         # do actual resize here
-        self.show_after_resize_callback = None
+        self.redraw_after_resize_callback = None
         self.canvas_image = Image.new('RGB', (self.canvas.winfo_width(), self.canvas.winfo_height()))
-        self.show()
+        self.redraw()
     
     def save_settings(self):
         settings = {
             'sources': [source.path if source else '' for source in self.image_sources],
-            'key_index': self.current_key,
+            'key_index': self.key_index,
             'gt_index': self.gt_index,
             'prefix_length': self.prefix_length
         }
@@ -187,13 +185,13 @@ class ImageCompareApp:
         
         self.update_key_list([index])
         self.load_images()
-        self.show()
+        self.redraw()
         self.save_settings()
     
     def menu_go_to_key(self, index):
-        self.current_key = index
+        self.key_index = index
         self.load_images()
-        self.show()
+        self.redraw()
         self.save_settings()
     
     def menu_enter_prefix_length(self):
@@ -214,13 +212,12 @@ class ImageCompareApp:
         self.image_sources = [ImageSource(source.path, self.prefix_length) if source else None for source in self.image_sources]
         self.update_key_list([i for i in range(4) if self.image_sources[i]])
         self.load_images()
-        self.show()
+        self.redraw()
         self.save_settings()
     
     def menu_set_gt(self, index):
         self.gt_index = index
         
-        # resetting the comparison text will result in a new comparison on show()
         for i, view in enumerate(self.image_views):
             if view:
                 if i == self.gt_index:
@@ -228,7 +225,7 @@ class ImageCompareApp:
                 elif self.image_views[self.gt_index] and self.image_views[self.gt_index].image:
                     view.calculate_psnr(self.image_views[self.gt_index].image)
         
-        self.show()
+        self.redraw(redraw_images=[])
         self.save_settings()
     
     def update_key_list(self, update_indices):
@@ -240,12 +237,12 @@ class ImageCompareApp:
         
         # make sure key index is within bounds
         if len(self.key_list) == 0:
-            self.current_key = None
+            self.key_index = None
         else:
-            if self.current_key is None:
-                self.current_key = 0
+            if self.key_index is None:
+                self.key_index = 0
             else:
-                self.current_key = min(self.current_key, len(self.key_list) - 1)
+                self.key_index = min(self.key_index, len(self.key_list) - 1)
         
         # update menus
         for index in update_indices:
@@ -264,16 +261,16 @@ class ImageCompareApp:
             if view and not view.image:
                 view.future.cancel()
         
-        if self.current_key is None:
+        if self.key_index is None:
             self.image_views = [None, None, None, None]
             return
         
         # submit loads
-        key = self.key_list[self.current_key]
+        key = self.key_list[self.key_index]
         for i, source in enumerate(self.image_sources):
             if source:
                 path = source.get_file(key)
-                future = self.loader.submit(self.load_image_worker_thread, path, i)
+                future = self.loader.submit(self.load_image_worker_thread, path, self.key_index, i)
                 self.image_views[i] = ImageView(path, future)
         
         # resets transformations
@@ -281,52 +278,53 @@ class ImageCompareApp:
         self.crop_center = (0.5, 0.5)
         self.dragging = False
     
-    def load_image_worker_thread(self, path, index):
+    def load_image_worker_thread(self, path, key_index, image_index):
         # called by thread executor
         try:
             image = Image.open(path)
             image.load()
-            self.root.after(80, self.on_image_load_main_thread, index)
+            self.root.after(75, self.on_image_load_main_thread, key_index, image_index)
             return image
         except:
             return None
     
-    def on_image_load_main_thread(self, index):
+    def on_image_load_main_thread(self, key_index, image_index):
+        if self.key_index != key_index:
+            return
         # pull image from future
-        self.image_views[index].get_image()
+        try:
+            self.image_views[image_index].get_image()
+        except:
+            return
         
-        if index == self.gt_index:
+        if image_index == self.gt_index:
             # calculate comparisons for all images
             for i, view in enumerate(self.image_views):
                 if view:
-                    if i == index:
+                    if i == image_index:
                         view.set_gt()
-                    elif view.get_image():
-                        view.calculate_psnr(self.image_views[self.gt_index].get_image())
+                    elif view.image:
+                        view.calculate_psnr(self.image_views[self.gt_index].image)
         else:
             # calculate comparison for new image
             if self.gt_index is not None:
                 gt_view = self.image_views[self.gt_index]
-                if gt_view and gt_view.get_image():
-                    self.image_views[index].calculate_psnr(gt_view.image)
+                if gt_view and gt_view.image:
+                    self.image_views[image_index].calculate_psnr(gt_view.image)
         
-        if index == self.gt_index:
-            # need to redraw all cells because gt_index changes comparison text of other cells
-            self.show()
-        else:
-            # save performance by only redrawing the new image
-            self.show([index])
+       
+        self.redraw([image_index])
         
     def next_image(self, _event=None):
-        self.current_key = (self.current_key + 1) % len(self.key_list)
+        self.key_index = (self.key_index + 1) % len(self.key_list)
         self.load_images()
-        self.show()
+        self.redraw()
         self.save_settings()
             
     def prev_image(self, _event=None):
-        self.current_key = (self.current_key + len(self.key_list) - 1) % len(self.key_list)
+        self.key_index = (self.key_index + len(self.key_list) - 1) % len(self.key_list)
         self.load_images()
-        self.show()
+        self.redraw()
         self.save_settings()
 
     def on_zoom(self, event):
@@ -348,7 +346,7 @@ class ImageCompareApp:
         cy = min(max(cy, half_crop_size), 1.0 - half_crop_size)
         self.crop_center = (cx, cy)
         
-        self.show()
+        self.redraw()
     
     def start_drag(self, event):
         self.dragging = True
@@ -357,7 +355,7 @@ class ImageCompareApp:
         
     def stop_drag(self, _):
         self.dragging = False
-        self.show()
+        self.redraw()
 
     def do_drag(self, event):
         if not self.dragging:
@@ -378,7 +376,7 @@ class ImageCompareApp:
         cy = min(max(cy, half_crop_size), 1.0 - half_crop_size)
         
         self.crop_center = (cx, cy)
-        self.show()
+        self.redraw()
 
     def current_canvas_size(self):
         w = self.canvas.winfo_width()
@@ -390,62 +388,65 @@ class ImageCompareApp:
         w = (canvas_w - IMAGE_GAP) // 2
         h = (canvas_h - IMAGE_GAP - 2 * TEXT_BAR_HEIGHT) // 2
         return w, h
+    
+    def current_cell_dim(self, index):
+        w, h = self.current_cell_size()
+        row, col = divmod(index, 2)
+        x = col * (w + IMAGE_GAP)
+        y = row * (h + IMAGE_GAP + TEXT_BAR_HEIGHT)
+        return x, y, w, h
+        
 
-    def show(self, redraw_cells=[0, 1, 2, 3]):
-        cell_w, cell_h = self.current_cell_size()
-        if cell_w <= 0 or cell_h <= 0:
+    def redraw(self, redraw_images=[0, 1, 2, 3]):
+        w, h = self.current_canvas_size()
+        if w <= 2 or h <= 2:
             return
         
         draw = ImageDraw.Draw(self.canvas_image)
         
-        for i in redraw_cells:
+        for i in redraw_images:
             view = self.image_views[i]
-            row, col = divmod(i, 2)
-            x = col * (cell_w + IMAGE_GAP)
-            y = row * (cell_h + IMAGE_GAP + TEXT_BAR_HEIGHT)
+            x, y, w, h = self.current_cell_dim(i)
 
-            if view:
+            if view and view.image:
+                image = view.image
+                    
+                # Compute crop
+                viewport_w = image.width / self.zoom
+                viewport_h = image.height / self.zoom
+                cx, cy = self.crop_center
+                x1 = int(cx * image.width - viewport_w / 2)
+                y1 = int(cy * image.height - viewport_h / 2)
+                x2 = int(x1 + viewport_w)
+                y2 = int(y1 + viewport_h)
+
+                crop = image.crop((x1, y1, x2, y2))
+                crop = crop.resize((w, h), Image.Resampling.NEAREST)
                 
-                image = view.get_image()
-                if image:
-                    
-                    # Compute crop
-                    viewport_w = image.width / self.zoom
-                    viewport_h = image.height / self.zoom
-                    cx, cy = self.crop_center
-                    x1 = int(cx * image.width - viewport_w / 2)
-                    y1 = int(cy * image.height - viewport_h / 2)
-                    x2 = int(x1 + viewport_w)
-                    y2 = int(y1 + viewport_h)
+                self.canvas_image.paste(crop, (x, y + TEXT_BAR_HEIGHT))
 
-                    crop = image.crop((x1, y1, x2, y2))
-                    crop = crop.resize((cell_w, cell_h), Image.Resampling.NEAREST)
-                    
-                    self.canvas_image.paste(crop, (x, y + TEXT_BAR_HEIGHT))
-                    
-                else:
-                    draw.rectangle([x, y + TEXT_BAR_HEIGHT, x + cell_w, y + TEXT_BAR_HEIGHT + cell_h], fill="black")
-                    
+            else:
+                draw.rectangle([x, y + TEXT_BAR_HEIGHT, x + w, y + TEXT_BAR_HEIGHT + h], fill="black")
+
+        for i, view in enumerate(self.image_views):
+            if view:
                 text = f'{self.image_sources[i].label} - {os.path.basename(view.path)}'
             
                 if view.comparison_text:    
                     text += ' - ' + view.comparison_text
-
             else:
                 text = '(empty)'
-                draw.rectangle([x, y + TEXT_BAR_HEIGHT, x + cell_w, y + TEXT_BAR_HEIGHT + cell_h], fill="black")
-
-            # Label bar
-            draw.rectangle([x, y, x + cell_w, y + TEXT_BAR_HEIGHT], fill=(50, 50, 50))
+            
+            x, y, w, h = self.current_cell_dim(i)
+            draw.rectangle([x, y, x + w, y + TEXT_BAR_HEIGHT], fill=(50, 50, 50))
             draw.text((x + 5, y + 5), text, fill=(255, 255, 255), align='center')
-
 
         self.tk_img = ImageTk.PhotoImage(self.canvas_image)
         self.canvas.delete('all')
         self.canvas.create_image(0, 0, anchor='nw', image=self.tk_img)
 
         if len(self.key_list) != 0:
-            self.root.title(f'View {self.current_key + 1}/{len(self.key_list)} {self.zoom:.2f}X')
+            self.root.title(f'View {self.key_index + 1}/{len(self.key_list)} {self.zoom:.2f}X')
         else:
             self.root.title(f'Empty')
 
