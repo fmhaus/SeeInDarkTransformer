@@ -263,6 +263,7 @@ if __name__ == '__main__':
             augment_images = False
         
         log = {}
+        log['model'] = f"{model_uncompiled.__class__.__module__}.{model_uncompiled.__class__.__name__}"
         log['epoch'] = epoch_number
         log['lr_schedule_first_epoch'] = lr_schedule_first_epoch
         log['learning_rates'] = [optimizer.param_groups[optimizer_param_group_indices[i]]['lr'] if optimizer_param_group_indices[i] != -1 else 0 for i in range(3)]
