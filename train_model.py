@@ -15,7 +15,6 @@ from models.sony_images import dataset, sid_bottleneck_transformer, get_model_cl
 from util import image_util
 import config
 
-
 def init_options(parser):
     config.init_common_args(parser)
     
