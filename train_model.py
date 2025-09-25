@@ -150,9 +150,9 @@ if __name__ == '__main__':
             lr_schedule_first_epoch = log['lr_schedule_first_epoch']
            
             optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
-            optimizer_checkpoint = torch.load(optimizer_file)
+            optimizer_checkpoint = torch.load(optimizer_file, map_location=device)
                 
-            optimizer.load_state_dict(optimizer_checkpoint, device=device)
+            optimizer.load_state_dict(optimizer_checkpoint)
             print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
         else:
             # Restart warmup
