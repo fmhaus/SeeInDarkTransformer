@@ -95,7 +95,7 @@ if __name__ == '__main__':
                 best_log = json.load(fr)
                 best_psnr = best_log['avg_val_psnr']
         
-        print(f'Resuming with epoch {start_epoch+1}.')
+        print(f'Resuming in epoch {start_epoch+1}.')
         
     else:
         start_epoch = 0
@@ -109,6 +109,7 @@ if __name__ == '__main__':
     model_class = get_model_class(opt.model)
     model = model_class()
     model.load_state_dict(model_checkpoint)
+    model.to(device)
     
     # Optimizer
     encoder_params = []
@@ -297,18 +298,29 @@ if __name__ == '__main__':
             gt_images = gt_images.to(device, non_blocking=True)
             
             with torch.no_grad():
-                packed = dataset.pack_raw(raw_images, pack_settings)
-                
-                if dataset_train.transform is not None:
-                    packed, gt_images = dataset_train.transform((packed, gt_images))
             
-            if device_cfg.auto_mixed_precision:
-                with torch.amp.autocast(device.type):
+                if device_cfg.auto_mixed_precision:
+                    with torch.amp.autocast(device.type):
+                
+                        packed = dataset.pack_raw(raw_images, pack_settings)
+                    
+                        if dataset_train.transform is not None:
+                            packed, gt_images = dataset_train.transform((packed, gt_images))
+                        else:
+                            packed = packed.to(torch.float32)
+                
+                        out_images = model(packed)
+                        loss = criterion(out_images, gt_images)
+                else:
+                    packed = dataset.pack_raw(raw_images, pack_settings)
+                    
+                    if dataset_train.transform is not None:
+                        packed, gt_images = dataset_train.transform((packed, gt_images))
+                    else:
+                        packed = packed.to(torch.float32)
+                    
                     out_images = model(packed)
                     loss = criterion(out_images, gt_images)
-            else:
-                out_images = model(packed)
-                loss = criterion(out_images, gt_images)
                 
                 
             total_loss += loss.item() * batch_size
