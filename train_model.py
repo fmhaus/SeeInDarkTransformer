@@ -74,7 +74,7 @@ if __name__ == '__main__':
         model_file = os.path.join(opt.out_folder, f'model_checkpoint_{opt.resume_epoch}.pt')
         model_checkpoint = torch.load(model_file, map_location=device)
         
-        print(f'Loaded model_checkpoint_{opt.resume_epoch}.')
+        print(f'Loaded model_checkpoint_{opt.resume_epoch}.pt')
         
         if opt.load_optimizer:
             # also load in what epoch lr schedule started
@@ -106,7 +106,8 @@ if __name__ == '__main__':
         print(f'Starting in epoch 1.')
 
     # Model 
-    model = get_model_class(opt.model)
+    model_class = get_model_class(opt.model)
+    model = model_class()
     model.load_state_dict(model_checkpoint)
     
     # Optimizer
