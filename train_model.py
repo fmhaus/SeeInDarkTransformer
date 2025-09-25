@@ -72,7 +72,7 @@ if __name__ == '__main__':
             log = json.load(fr)
         
         model_file = os.path.join(opt.out_folder, f'model_checkpoint_{opt.resume_epoch}.pt')
-        model_checkpoint = torch.load(model_file, map_location=device)
+        model_checkpoint = torch.load(model_file, weights_only=True, map_location=device)
         
         print(f'Loaded model_checkpoint_{opt.resume_epoch}.pt')
         
@@ -81,7 +81,7 @@ if __name__ == '__main__':
             lr_schedule_first_epoch = log['lr_schedule_first_epoch']
            
             optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
-            optimizer_checkpoint = torch.load(optimizer_file, map_location=device)
+            optimizer_checkpoint = torch.load(optimizer_file, weights_only=True, map_location=device)
                 
             print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
         else:
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     else:
         start_epoch = 0
         lr_schedule_first_epoch = 0
-        model_checkpoint = torch.load('./models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt', map_location=device)
+        model_checkpoint = torch.load('./models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt', weights_only=True, map_location=device)
         optimizer_checkpoint = None
         
         print(f'Starting in epoch 1.')
