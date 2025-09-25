@@ -150,7 +150,7 @@ if __name__ == '__main__':
             lr_schedule_first_epoch = log['lr_schedule_first_epoch']
            
             optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
-            optimizer_checkpoint = torch.load(optimizer_file, weights_only=True, map_location=torch.device('cpu'))
+            optimizer_checkpoint = torch.load(optimizer_file, weights_only=True, map_location=device)
                 
             optimizer.load_state_dict(optimizer_checkpoint)
             print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
@@ -174,7 +174,6 @@ if __name__ == '__main__':
         print(f'Starting in epoch 1.')
     
     model.to(device=device)
-    optimizer.to(device=device)
     model_uncompiled = model
     if device_cfg.compile_model:
         model = torch.compile(model)
