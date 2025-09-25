@@ -135,8 +135,6 @@ if __name__ == '__main__':
             'lr': opt.encoder_initial_lr,
             'weight_decay': opt.encoder_weight_decay
         })
-        for param in encoder_params:
-            param.requires_grad = True
     else:
         for param in encoder_params:
             param.requires_grad = False
@@ -150,8 +148,6 @@ if __name__ == '__main__':
             'lr': opt.bottleneck_initial_lr,
             'weight_decay': opt.bottleneck_weight_decay
         })
-        for param in bottleneck_params:
-            param.requires_grad = True
     else:
         for param in bottleneck_params:
             param.requires_grad = False
@@ -164,8 +160,6 @@ if __name__ == '__main__':
             'lr': opt.decoder_initial_lr,
             'weight_decay': opt.decoder_weight_decay
         })
-        for param in decoder_params:
-            param.requires_grad = True
     else:
         for param in decoder_params:
             param.requires_grad = False
