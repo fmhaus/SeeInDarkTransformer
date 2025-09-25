@@ -171,7 +171,7 @@ if __name__ == '__main__':
     
     if device_cfg.auto_mixed_precision:
         print('Auto mixed precision enabled.')
-        scaler = torch.amp.GradScaler()
+        grad_scaler = torch.amp.Gradgrad_scaler()
 
     # Scheduler
     warmup_scheduler = LinearLR(
@@ -309,7 +309,7 @@ if __name__ == '__main__':
             loss = loss / gradient_acc_total_steps
             
             if device_cfg.auto_mixed_precision:
-                scaler.scale(loss).backward()
+                grad_scaler.scale(loss).backward()
             else:
                 loss.backward()
             
@@ -317,9 +317,9 @@ if __name__ == '__main__':
             if gradient_acc == gradient_acc_total_steps:
                 # update weights and reset gradients
                 if device_cfg.auto_mixed_precision:
-                    scaler.unscale_(optimizer)
-                    scaler.step(optimizer)
-                    scaler.update()
+                    grad_scaler.unscale_(optimizer)
+                    grad_scaler.step(optimizer)
+                    grad_scaler.update()
                 else:
                     optimizer.step()
     
@@ -329,9 +329,9 @@ if __name__ == '__main__':
         # handle accumulated gradients after last update
         if gradient_acc != 0:
             if device_cfg.auto_mixed_precision:
-                scaler.unscale_(optimizer)
-                scaler.step(optimizer)
-                scaler.update()
+                grad_scaler.unscale_(optimizer)
+                grad_scaler.step(optimizer)
+                grad_scaler.update()
             else:
                 optimizer.step()
 

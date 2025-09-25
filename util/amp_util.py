@@ -10,6 +10,6 @@ class MaybeAMP:
             self.amp = torch.amp.autocast(self.device.type)
             self.amp.__enter__()
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         if self.enabled:
-            self.amp.__exit__()
+            self.amp.__exit__(exc_type, exc_value, traceback)
