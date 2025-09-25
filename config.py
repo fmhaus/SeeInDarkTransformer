@@ -5,6 +5,7 @@ def init_common_args(parser):
     parser.add_argument('--preprocess_folder', type=str, default='./../preprocess', help='location where preprocesses images are stored')
     parser.add_argument('--out_folder', type=str, default='./../out', help='location where logs and checkpoints are stored')
     parser.add_argument('--device_config', type=str, default='./config/cpu.ini', help='Device config to use')
+    parser.add_arugment('--model', type=str, default='sid_bottleneck_transformer_2b', help='The model identifier')
     
     return parser
 

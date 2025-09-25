@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from tqdm import tqdm
-from models.sony_images import dataset, sid_bottleneck_transformer
+from models.sony_images import dataset, sid_bottleneck_transformer, get_model_class
 from util import image_util
 import config
 
@@ -46,22 +46,69 @@ if __name__ == '__main__':
     print(f"Time now: {datetime.datetime.now().isoformat()}")
     print(f"CPU core count is {os.cpu_count()}.")
     print(opt)
-    
-    if device_cfg.compile_model:
-        torch.backends.cudnn.benchmark = True
 
     # set seeds
     random.seed(1234)
     np.random.seed(1234)
     torch.manual_seed(1234)
     torch.cuda.manual_seed_all(1234)
-
-    # Model
-    model = sid_bottleneck_transformer.Model_2b_c()
-    model.set_transformer_dropout(opt.attn_dropout, opt.mlp_dropout)
-
+    
+    
+    # device setup
+    if device_cfg.compile_model:
+        torch.backends.cudnn.benchmark = True
+        
     device = torch.device('cuda' if device_cfg.use_cuda else 'cpu')
     print(f'Using device {'cuda' if device_cfg.use_cuda else 'cpu'}.')
+    
+    best_psnr = 0.0
+
+    # Resume
+    if opt.resume_epoch != 0:
+        
+        # load log and model
+        start_epoch = opt.resume_epoch
+        
+        with open(os.path.join(opt.out_folder, f'log_{opt.resume_epoch}.json'), 'r') as fr:
+            log = json.load(fr)
+        
+        model_file = os.path.join(opt.out_folder, f'model_checkpoint_{opt.resume_epoch}.pt')
+        model_checkpoint = torch.load(model_file, map_location=device)
+        
+        print(f'Loaded model_checkpoint_{opt.resume_epoch}.')
+        
+        if opt.load_optimizer:
+            # also load in what epoch lr schedule started
+            lr_schedule_first_epoch = log['lr_schedule_first_epoch']
+           
+            optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
+            optimizer_checkpoint = torch.load(optimizer_file, map_location=device)
+                
+            print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
+        else:
+            # Restart warmup
+            lr_schedule_first_epoch = start_epoch
+            optimizer_checkpoint = None
+        
+        best_log_file = os.path.join(opt.out_folder, f'log_best.json')
+        if os.path.isfile(best_log_file):
+            with open(best_log_file, 'r') as fr:
+                best_log = json.load(fr)
+                best_psnr = best_log['avg_val_psnr']
+        
+        print(f'Resuming with epoch {start_epoch+1}.')
+        
+    else:
+        start_epoch = 0
+        lr_schedule_first_epoch = 0
+        model_checkpoint = torch.load('./models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt', map_location=device)
+        optimizer_checkpoint = None
+        
+        print(f'Starting in epoch 1.')
+
+    # Model 
+    model = get_model_class(opt.model)
+    model.load_state_dict(model_checkpoint)
     
     # Optimizer
     encoder_params = []
@@ -124,60 +171,12 @@ if __name__ == '__main__':
         print('Decoder frozen')
     
     optimizer = torch.optim.AdamW(optimizer_params)
+    if optimizer_checkpoint is not None:
+        optimizer.load_state_dict(optimizer_checkpoint)
+        
     if device_cfg.auto_mixed_precision:
         print('Auto mixed precision enabled.')
         scaler = torch.amp.GradScaler()
-    
-    best_psnr = 0.0
-
-    # Resume
-    if opt.resume_epoch != 0:
-        
-        # load log and model
-        start_epoch = opt.resume_epoch
-        
-        with open(os.path.join(opt.out_folder, f'log_{opt.resume_epoch}.json'), 'r') as fr:
-            log = json.load(fr)
-        
-        model_file = os.path.join(opt.out_folder, f'model_checkpoint_{opt.resume_epoch}.pt')
-        model_checkpoint = torch.load(model_file)
-        
-        model.load_state_dict(model_checkpoint)
-        print(f'Loaded model_checkpoint_{opt.resume_epoch}.')
-        
-        if opt.load_optimizer:
-            # also load in what epoch lr schedule started
-            lr_schedule_first_epoch = log['lr_schedule_first_epoch']
-           
-            optimizer_file = os.path.join(opt.out_folder, f'optimizer_checkpoint_{opt.resume_epoch}.pt')
-            optimizer_checkpoint = torch.load(optimizer_file)
-                
-            optimizer.load_state_dict(optimizer_checkpoint)
-            print(f'Loaded optimizer_checkpoint_{opt.resume_epoch}.pt.')
-        else:
-            # Restart warmup
-            lr_schedule_first_epoch = start_epoch
-        
-        best_log_file = os.path.join(opt.out_folder, f'log_best.json')
-        if os.path.isfile(best_log_file):
-            with open(best_log_file, 'r') as fr:
-                best_log = json.load(fr)
-                best_psnr = best_log['avg_val_psnr']
-        
-        print(f'Resuming with epoch {start_epoch+1}.')
-        
-    else:
-        start_epoch = 0
-        lr_schedule_first_epoch = 0
-        model.load_state('./models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt')
-        
-        print(f'Starting in epoch 1.')
-    
-    model.to(device=device)
-    model_uncompiled = model
-    if device_cfg.compile_model:
-        model = torch.compile(model)
-        print('Model compile enabled.')
 
     # Scheduler
     warmup_scheduler = LinearLR(
@@ -200,6 +199,13 @@ if __name__ == '__main__':
     )
 
     print(f'Starting LR schedule on epoch {start_epoch - lr_schedule_first_epoch + 1}.')
+
+    model.set_transformer_dropout(opt.attn_dropout, opt.mlp_dropout)
+    
+    model_uncompiled = model
+    if device_cfg.compile_model:
+        model = torch.compile(model)
+        print('Model compile enabled.')
 
     # Loss
     criterion = nn.L1Loss().to(device=device)
