@@ -174,6 +174,7 @@ if __name__ == '__main__':
         print(f'Starting in epoch 1.')
     
     model.to(device=device)
+    optimizer.to(device=device)
     model_uncompiled = model
     if device_cfg.compile_model:
         model = torch.compile(model)
