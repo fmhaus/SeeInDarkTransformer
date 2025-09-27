@@ -190,7 +190,7 @@ if __name__ == '__main__':
         milestones=[opt.warmup_epochs+1]
     )
     
-    for _ in range(opt.resume_epoch):
+    for _ in range(opt.resume_epoch-1):
         scheduler.step()
 
     print(f'Starting LR schedule on epoch {opt.resume_epoch - lr_schedule_first_epoch + 1}.')

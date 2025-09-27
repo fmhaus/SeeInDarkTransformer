@@ -16,7 +16,6 @@ import config
 def init_options(parser):
     config.init_common_args(parser)
     
-    parser.add_argument('--model', type=str, default='sid_original', help='What model to use')
     parser.add_argument('--model_state', type=str, help='The model state_dict file')
     parser.add_argument('--test_list', type=str, default='./data_lists/Sony_demo_list.txt', help='The list file to process')
     parser.add_argument('--save_images', action='store_true', default=False, help='Whether to store the result images')
@@ -31,7 +30,8 @@ if __name__ == '__main__':
     
     device_cfg = config.DeviceConfig(opt.device_config)
     
-    model = get_model_class(opt.model)
+    model_class = get_model_class(opt.model)
+    model = model_class()
     if opt.model_state is not None:
         model_state = opt.model_state
         state_dict = torch.load(opt.model_state, map_location=torch.device('cpu'), weights_only=True)
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         dataset_test, 
         batch_size=dataloader_batch_size, 
         shuffle=False, 
-        num_workers=opt.num_workers, 
+        num_workers=device_cfg.num_workers, 
         pin_memory=device_cfg.use_cuda, 
         drop_last=False, 
         persistent_workers=False
