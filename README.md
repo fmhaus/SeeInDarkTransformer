@@ -6,12 +6,14 @@ SeeInTheDarkTransformer is a transformer-based adaptation of "Learning to See in
 
 ## Setup
 
-- Download the dataset using `download_dataset_sony.sh` or [Link](https://storage.googleapis.com/isl-datasets/SID/Sony.zip)
-- Used libraries: 
-    - rawpy: reading raw image filesd
-    - numpy: general data processing
-    - torch: machine learning
-    - boto3: S3 storage for data and checkpoints
-    - tkinter: Demo and image comparison
+- Download the dataset using `download_dataset_sony.sh` or from the dataset creator [Link](https://github.com/cchen156/Learning-to-See-in-the-Dark)
+- Required libraries: 
     - pillow: Image loading
-    - torchprofile: profiling
+    - rawpy: Reading raw image files
+    - numpy: General data processing
+    - torch: Machine Learning
+- Libraries used in tools
+    - tkinter: Demo and image comparison
+    - opencv-python: Image processing
+    - matplotlib: Graphs and visualization
+    - tqdm: Progress bars
