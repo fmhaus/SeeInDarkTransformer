@@ -61,7 +61,10 @@ class TransformerBottleneck(nn.Module):
         
         self.down = nn.Conv2d(in_channels, dim_model, 2, stride=2)
         
-        self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((45, 67), dim_model), persistent=False)
+        # 45, 67 is full size
+        self.full_height = 45
+        self.full_width = 67 
+        self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((self.full_height, self.full_width), dim_model), persistent=False)
         
         self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4) for _ in range(n_transformer_blocks)])
         
@@ -73,9 +76,15 @@ class TransformerBottleneck(nn.Module):
         down = self.down(self.pad_to_even(x))
         down_shape = down.shape
         
+        # get embeddings slice based on dimension
+        down_h, down_w = down_shape[-2:]
+        dim_model = self.pos_embeddings.shape[-1]
+        pos_embed = self.pos_embeddings[0:down_h, 0:down_w, :].view(down_h*down_w, dim_model)
+        
+        
         # transform to transformer shape
         embeddings = down.flatten(2).transpose(1, 2)
-        embeddings = embeddings + self.pos_embeddings
+        embeddings = embeddings + pos_embed
         # [N, 45*67, 256]
         
         for block in self.blocks:
@@ -117,7 +126,7 @@ class TransformerBottleneck(nn.Module):
         row_embeds = self.create_positional_embeddings_1D(h, d).unsqueeze(1)
         col_embeds = self.create_positional_embeddings_1D(w, d).unsqueeze(0)
         
-        return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2).view(h*w, dim_model)
+        return torch.cat((row_embeds.expand(h, w, d), col_embeds.expand(h, w, d)), dim=2)
 
 class Model(nn.Module):
     def __init__(self, transformer_blocks):
