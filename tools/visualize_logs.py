@@ -28,7 +28,7 @@ class LogsData:
                 
                 logs[index] = log
         
-        self.x = np.array([i for i, log in enumerate(logs) if log is not None])
+        self.x = np.array([i+1 for i, log in enumerate(logs) if log is not None])
         self.logs = [log for log in logs if log is not None]
     
   
@@ -97,18 +97,20 @@ class Visuals:
 
 if __name__ == '__main__':
     
-    train_1 = LogsData('./../training/co_adapt_1/logs', '4b_c')
-    train_3 = LogsData('./../training/co_adapt_3/logs', '3B')
-    train_4 = LogsData('./../training/finetune_4/logs', '3B_f')
-    train_5 = LogsData('./../training/train_5/logs', '2B')
+    #train_1 = LogsData('./../training/co_adapt_1/logs', '4b_c')
+    #train_3 = LogsData('./../training/co_adapt_3/logs', '3B')
+    #train_4 = LogsData('./../training/finetune_4/logs', '3B_f')
+    #train_5 = LogsData('./../training/train_5/logs', '2B')
     train_6 = LogsData('./../training/train_6/logs', '2B_c')
+    train_7 = LogsData('./../training/v7/logs', '2B_c_hlr')
     
     vis = Visuals('2B vs 2B_c')
-    vis.add_logs(train_1)
-    vis.add_logs(train_3)
-    vis.add_logs(train_4)
-    vis.add_logs(train_5)
+    #vis.add_logs(train_1)
+    #vis.add_logs(train_3)
+    #vis.add_logs(train_4)
+    #vis.add_logs(train_5)
     vis.add_logs(train_6)
+    vis.add_logs(train_7)
     vis.add_benchmarks(LOSS_BENCHMARK, PSNR_BENCHMARK, BENCHMARK_LABEL)
     
     vis.show()
