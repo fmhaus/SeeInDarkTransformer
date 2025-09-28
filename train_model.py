@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from tqdm import tqdm
-from models.sony_images import dataset, sid_bottleneck_transformer, get_model_class
+from models.sony_images import dataset, sid_bottleneck_transformer, get_model_class, get_model_initial_state
 from util import amp_util, image_util
 import config
 
