@@ -98,7 +98,7 @@ if __name__ == '__main__':
         
     else:
         lr_schedule_first_epoch = 0
-        model_checkpoint = torch.load('./models/sony_images/states/sid_bottleneck_transformer_initial_2b_c.pt', weights_only=True, map_location=device)
+        model_checkpoint = torch.load(get_model_initial_state(opt.model), weights_only=True, map_location=device)
         optimizer_checkpoint = None
         
         print(f'Starting in epoch 1.')
