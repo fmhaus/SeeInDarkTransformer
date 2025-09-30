@@ -231,7 +231,9 @@ class Model_2b(Model):
         super().__init__(2, False)
     
     def load_pretrained(self):
-        raise RuntimeError('No pretrained model')
+        path = 'models/sony_images/states/sid_bottleneck_transformer_retrained_2b.pt'
+        super().load_state(path)
+        return '2b(v9, e18)'
     
 class Model_2b_c(Model):
     def __init__(self):
