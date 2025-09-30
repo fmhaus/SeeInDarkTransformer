@@ -22,6 +22,7 @@ def init_options(parser):
     parser.add_argument('--resume_epoch', type=int, default=0, help='epoch to resume training from (0 = train from zero)')
     parser.add_argument('--total_epochs', type=int, default=200, help='toal number of epochs')
     parser.add_argument('--warmup_epochs', type=int, default=5, help='number of warmup epochs (0 = no warmup)')
+    parser.add_argument('--patience_epochs', type=int, default=10, help='stop after how many epochs of no improvement')
     parser.add_argument('--augment_images_epoch', type=int, default=5, help='After what epoch images should be augmented (with random crops and flips)')
     parser.add_argument('--load_optimizer', action='store_true', default=False, help='Whether to load the optimizer (and lr schedule) when using resume or not')
     parser.add_argument('--save_checkpoint_frequency', type=int, default=1, help='After how many epochs the model and optimizer checkpoints should be saved')
@@ -59,8 +60,11 @@ if __name__ == '__main__':
         
     device = torch.device('cuda' if device_cfg.use_cuda else 'cpu')
     print(f'Using device {'cuda' if device_cfg.use_cuda else 'cpu'}.')
+    if device_cfg.use_cuda:
+        torch.set_float32_matmul_precision('high')
     
-    best_psnr = 0.0
+    best_val_loss = 0.0
+    best_epoch = 1
 
     # Resume
     if opt.resume_epoch != 0:
@@ -92,7 +96,8 @@ if __name__ == '__main__':
         if os.path.isfile(best_log_file):
             with open(best_log_file, 'r') as fr:
                 best_log = json.load(fr)
-                best_psnr = best_log['avg_val_psnr']
+                best_val_loss = best_log['avg_val_loss']
+                best_epoch = best_log['epoch']
         
         print(f'Resuming in epoch {opt.resume_epoch+1}.')
         
@@ -382,10 +387,15 @@ if __name__ == '__main__':
             torch.save(optimizer.state_dict(), os.path.join(opt.out_folder, f'optimizer_checkpoint_{epoch_number}.pt'))
             print('Saved checkpoint.')
         
-        if log['avg_val_psnr'] > best_psnr:
-            best_psnr = log['avg_val_psnr']
+        if log['avg_val_loss'] < best_val_loss:
+            best_val_loss = log['avg_val_loss']
+            best_epoch = epoch_number
             with open(os.path.join(opt.out_folder, f'log_best.json'), 'w')as fr:
                 fr.write(json.dumps(log))
             torch.save(model_uncompiled.state_dict(), os.path.join(opt.out_folder, f'model_checkpoint_best.pt'))
             torch.save(optimizer.state_dict(), os.path.join(opt.out_folder, f'optimizer_checkpoint_best.pt'))
             print('Saved new best.')
+        
+        if epoch_number - best_epoch >= opt.patience_epochs:
+            print(f'Stopping training early because performance did not improve for {opt.patience_epochs} epochs.')
+            break
