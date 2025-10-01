@@ -63,7 +63,7 @@ if __name__ == '__main__':
     if device_cfg.use_cuda:
         torch.set_float32_matmul_precision('high')
     
-    best_val_loss = 0.0
+    best_val_loss = 1e20
     best_epoch = 1
 
     # Resume
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     assert opt.effective_batch_size % device_cfg.train_batch_size == 0
     gradient_acc_total_steps = opt.effective_batch_size // device_cfg.train_batch_size
 
-    with open(os.path.join(opt.out_folder, 'options.json'), 'w') as fr:
+    with open(os.path.join(opt.out_folder, 'options.txt'), 'w') as fr:
         fr.write(str(opt))
 
     for epoch_idx in range(opt.resume_epoch, opt.total_epochs):
