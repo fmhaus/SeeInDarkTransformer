@@ -263,10 +263,7 @@ if __name__ == '__main__':
         epoch_number = epoch_idx + 1
         
         if epoch_number >= opt.augment_images_epoch:
-            dataloader_train.transform = image_util.AugmentSequentiel(
-                image_util.AugmentTranslateReflect(max_translate_factor=0.5, chance=0.95),
-                image_util.augment_mirror
-            )
+            dataloader_train.transform = image_util.augment_mirror
             augment_images = True
         else:
             dataloader_train.transform = None
