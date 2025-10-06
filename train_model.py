@@ -54,7 +54,7 @@ if __name__ == '__main__':
     
     
     # device setup
-    if device_cfg.compile_model:
+    if opt.compile:
         torch.backends.cudnn.benchmark = True
         
     device = torch.device('cuda' if device_cfg.use_cuda else 'cpu')
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     print(f'Starting LR schedule on epoch {opt.resume_epoch - lr_schedule_first_epoch + 1}.')
     
     model_uncompiled = model
-    if device_cfg.compile_model:
+    if opt.compile:
         model = torch.compile(model)
         print('Model compile enabled.')
 

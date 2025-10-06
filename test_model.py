@@ -43,7 +43,7 @@ if __name__ == '__main__':
     print(f'Using device {'cuda' if device_cfg.use_cuda else 'cpu'}.')
     
     model.to(device=device)
-    if device_cfg.compile_model:
+    if opt.compile:
         model = torch.compile(model)
         print('Model compile enabled.')
     
