@@ -24,6 +24,7 @@ def init_options(parser):
     parser.add_argument('--warmup_epochs', type=int, default=5, help='number of warmup epochs (0 = no warmup)')
     parser.add_argument('--patience_epochs', type=int, default=10, help='stop after how many epochs of no improvement')
     parser.add_argument('--augment_images_epoch', type=int, default=5, help='After what epoch images should be augmented (with random crops and flips)')
+    parser.add_argument('--augment_type', choices=['translate_reflect_mirror', 'crop_mirror', 'mirror', 'none'], default='translate_reflect_mirror', help='What type of augmentation to use')
     parser.add_argument('--load_optimizer', action='store_true', default=False, help='Whether to load the optimizer (and lr schedule) when using resume or not')
     parser.add_argument('--save_checkpoint_frequency', type=int, default=1, help='After how many epochs the model and optimizer checkpoints should be saved')
     parser.add_argument('--effective_batch_size', type=int, default=24, help='number of images processed before updating weights')
@@ -33,8 +34,6 @@ def init_options(parser):
     parser.add_argument('--encoder_weight_decay', type=float, default=0, help='Weight decay for encoder')
     parser.add_argument('--bottleneck_weight_decay', type=float, default=0, help='Weight decay for bottleneck')
     parser.add_argument('--decoder_weight_decay', type=float, default=0, help='Weight decay for decoder')
-    parser.add_argument('--mlp_dropout', type=float, default=0.1, help='Dropout value for the Transformer MLP')
-    parser.add_argument('--attn_dropout', type=float, default=0.1, help='Dropout value for the Transformer Attention')
        
     return parser
 
@@ -199,8 +198,6 @@ if __name__ == '__main__':
         scheduler.step()
 
     print(f'Starting LR schedule on epoch {opt.resume_epoch - lr_schedule_first_epoch + 1}.')
-
-    model.set_transformer_dropout(opt.attn_dropout, opt.mlp_dropout)
     
     model_uncompiled = model
     if device_cfg.compile_model:
@@ -237,7 +234,7 @@ if __name__ == '__main__':
         num_workers=device_cfg.num_workers, 
         pin_memory=device_cfg.use_cuda, 
         drop_last=True, 
-        persistent_workers=not dataset_train.pack_augment_on_worker
+        persistent_workers=not dataset_train.pack_augment_on_worker and device_cfg.num_workers>0
     )
 
     dataloader_val = DataLoader(
@@ -247,8 +244,18 @@ if __name__ == '__main__':
         num_workers=device_cfg.num_workers, 
         pin_memory=device_cfg.use_cuda, 
         drop_last=False, 
-        persistent_workers=not dataset_val.pack_augment_on_worker
+        persistent_workers=not dataset_val.pack_augment_on_worker and device_cfg.num_workers>0
     )
+
+    image_augmentation = None
+    if opt.augment_type == 'translate_reflect_mirror':
+        image_augmentation = image_util.AugmentSequentiel(image_util.AugmentTranslateReflect(0.3, 0.9), image_util.augment_mirror)
+    elif opt.augment_type == 'crop_mirror':
+        image_augmentation = image_util.AugmentSequentiel(image_util.AugmentCrop(), image_util.augment_mirror)
+    elif opt.augment_type == 'mirror':
+        image_augmentation = image_util.augment_mirror
+    elif opt.augment_type != 'none':
+        raise ValueError(f'Invalid augment type {opt.augment_type}')
 
     os.makedirs(opt.out_folder, exist_ok=True)
     print(f"{len_train_set} training images, {len_val_set} validation images.")
@@ -263,11 +270,12 @@ if __name__ == '__main__':
         epoch_number = epoch_idx + 1
         
         if epoch_number >= opt.augment_images_epoch:
-            dataloader_train.transform = image_util.augment_mirror
-            augment_images = True
+            'translate_reflect_mirror', 'crop_mirror', 'mirror'
+            dataloader_train.transform = image_augmentation
+            augment_str = opt.augment_type
         else:
             dataloader_train.transform = None
-            augment_images = False
+            augment_str = 'before_augment_epoch'
         
         log = {}
         log['model'] = f"{model_uncompiled.__class__.__module__}.{model_uncompiled.__class__.__name__}"
@@ -275,7 +283,7 @@ if __name__ == '__main__':
         log['lr_schedule_first_epoch'] = lr_schedule_first_epoch
         log['learning_rates'] = [optimizer.param_groups[optimizer_param_group_indices[i]]['lr'] if optimizer_param_group_indices[i] != -1 else 0 for i in range(3)]
         log['auto_mixed_precision'] = device_cfg.auto_mixed_precision
-        log['augment_images'] = augment_images
+        log['augment_images'] = opt.augment_type
         
         # ---------- train ----------
         

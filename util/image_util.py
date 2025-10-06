@@ -22,83 +22,35 @@ def augment_mirror(item):
         in_image = torch.flip(in_image, [-1])
         gt_image = torch.flip(gt_image, [-1])
     return (in_image, gt_image)
-    
-def augment_translate_new(item, max_translate_factor=0.25): # mode reflect or replicate
+
+def augment_crop(item, size_step=2**5, min_size_factor=0.5):
     in_image, gt_image = item
-    N, C, H, W = in_image.shape
-    device = in_image.device
-    
-    # max translation in pixels
-    max_tx = int(max_translate_factor * W)  
-    max_ty = int(max_translate_factor * H)
-    
-    # randomize translation for every batch
-    tx = torch.randint(1-max_tx, max_tx, [N], device=device)
-    ty = torch.randint(1-max_ty, max_ty, [N], device=device)
-    
-    def reflect_indices(translation, end, dim):
-        # get indices in [N, H] shape (or W) and apply translation
-        indices = torch.arange(end, device=device)[None, :] - translation[:, None]
-        # Indices outside of (0:N) are reflected using abs
-        m = end-1
-        reflect = torch.abs((indices + m) % (2*m) - m)
-        # expand to 4 dims
-        expanded = reflect[:, :, None, None].movedim(1, dim)
-        return expanded
-    
-    batch_indices = torch.arange(N, device=device)[:, None, None, None]
-    in_channel_indices = torch.arange(C, device=device)[None, :, None, None]
-    gt_channel_indices = torch.arange(gt_image.shape[1], device=device)[None, :, None, None]
-    in_image = in_image[batch_indices, in_channel_indices, reflect_indices(ty, H, 2), reflect_indices(tx, W, 3)]
-    gt_image = gt_image[batch_indices, gt_channel_indices, reflect_indices(2*ty, 2*H, 2), reflect_indices(2*tx, 2*W, 3)]
+
+    h, w = in_image.shape[2:]
+
+    down_h = h // size_step
+    down_w = w // size_step
+
+    crop_h = torch.randint(int(min_size_factor * h), down_h) * size_step
+    crop_w = torch.randint((int(min_size_factor * w)), down_w) * size_step
+
+    x = torch.randint(0, h-crop_h)
+    y = torch.randint(0, w-crop_w)
+
+    in_image = in_image[:, :, y:y+crop_h, x:x+crop_w]
+    gt_image = gt_image[:, :, 2*x:2*(y+crop_h), 2*x:2*(x+crop_w)]
 
     return (in_image, gt_image)
 
-def augment_translate_old_loop(item, max_translate_factor=0.25):
-    in_image, gt_image = item
+class AugmentCrop():
+    def __init__(self, size_step=2**5, min_size_factor=0.5):
+        self.size_step = size_step
+        self.min_size_factor = min_size_factor
     
-    N, _, H, W = in_image.shape
-    
-    for i in range(N):
-    
-        trans_x = random.randint(-int(max_translate_factor * W), int(max_translate_factor * W))
-        trans_y = random.randint(-int(max_translate_factor * H), int(max_translate_factor * H))
-        
-        in_image[i] = torch.roll(in_image[i], shifts=(trans_y, trans_x), dims=(1, 2))
-        gt_image[i] = torch.roll(gt_image[i], shifts=(2*trans_y, 2*trans_x), dims=(1, 2))
-        
-        pad_left = trans_x if trans_x > 0 else 0
-        pad_right = -trans_x if trans_x < 0 else 0
-        pad_top = trans_y if trans_y > 0 else 0
-        pad_bottom = -trans_y if trans_y < 0 else 0
-        
-        in_image[i] = F.pad(in_image[i, :, pad_top:(H-pad_bottom), pad_left:(W-pad_right)], pad=[pad_left, pad_right, pad_top, pad_bottom], mode='reflect')
-        gt_image[i] = F.pad(gt_image[i, :, 2*pad_top:2*(H-pad_bottom), 2*pad_left:2*(W-pad_right)], pad=[2*pad_left, 2*pad_right, 2*pad_top, 2*pad_bottom], mode='reflect')
-    
-    return in_image, gt_image
+    def __call__(self, *args, **kwargs):
+        return augment_crop(self.size_step, self.min_size_factor)
 
-def augment_translate_old(item, max_translate_factor=0.25):
-    in_image, gt_image = item
-    
-    H, W = in_image.shape[-2:]
-    
-    trans_x = random.randint(-int(max_translate_factor * W), int(max_translate_factor * W))
-    trans_y = random.randint(-int(max_translate_factor * H), int(max_translate_factor * H))
-    
-    in_image = torch.roll(in_image, shifts=(trans_y, trans_x), dims=(1, 2))
-    gt_image = torch.roll(gt_image, shifts=(2*trans_y, 2*trans_x), dims=(1, 2))
-    
-    pad_left = trans_x if trans_x > 0 else 0
-    pad_right = -trans_x if trans_x < 0 else 0
-    pad_top = trans_y if trans_y > 0 else 0
-    pad_bottom = -trans_y if trans_y < 0 else 0
-    
-    in_image = F.pad(in_image[:, :, pad_top:(H-pad_bottom), pad_left:(W-pad_right)], pad=[pad_left, pad_right, pad_top, pad_bottom], mode='reflect')
-    gt_image = F.pad(gt_image[:, :, 2*pad_top:2*(H-pad_bottom), 2*pad_left:2*(W-pad_right)], pad=[2*pad_left, 2*pad_right, 2*pad_top, 2*pad_bottom], mode='reflect')
-    
-    return in_image, gt_image
-
-def augment_translate_fast(item, max_translate_factor=0.25):
+def augment_translate_reflect(item, max_translate_factor=0.25):
     in_image, gt_image = item
     
     H, W = in_image.shape[-2:]
@@ -123,7 +75,7 @@ class AugmentTranslateReflect():
     
     def __call__(self, *args, **kwargs):
         if random.uniform(0, 1) >= random.chance:
-            return augment_translate_fast(args[0], self.max_translate_factor)
+            return augment_translate_reflect(args[0], self.max_translate_factor)
 
 class AugmentSequentiel():
     def __init__(self, *augments):

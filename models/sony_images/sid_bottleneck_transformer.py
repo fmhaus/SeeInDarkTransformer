@@ -38,13 +38,6 @@ class TransformerBlock(nn.Module):
         
         return x
     
-    def set_dropout(self, attn_dropout, mlp_dropout):
-        self.dropout1.p = attn_dropout
-        self.attention.dropout = attn_dropout
-        
-        self.dropout2.p = mlp_dropout
-        self.mlp[2].p = mlp_dropout
-    
     # Truncation normal initialization
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -63,7 +56,7 @@ class TransformerBottleneck(nn.Module):
         
         self.register_buffer('pos_embeddings', self.create_positional_embeddings_2D((45, 67), dim_model), persistent=False)
         
-        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4) for _ in range(n_transformer_blocks)])
+        self.blocks = nn.ModuleList([TransformerBlock(dim_model, 4, attn_dropout=0.1, mlp_dropout=0.2) for _ in range(n_transformer_blocks)])
         
         if additional_conv:
             self.up = nn.Sequential(
@@ -91,10 +84,6 @@ class TransformerBottleneck(nn.Module):
         reshaped = embeddings.transpose(1, 2).reshape(down_shape)
         up = self.up(reshaped)
         return self.crop_like(up, (h, w))
-    
-    def set_dropout(self, attn_dropout, mlp_dropout):
-        for block in self.blocks:
-            block.set_dropout(attn_dropout, mlp_dropout)
     
     def pad_to_even(self, x):
         _, _, H, W = x.shape
@@ -220,9 +209,6 @@ class Model(nn.Module):
         # depth_to_space in pytorch
         return image_util.depth_to_space(conv10, 2)
     
-    def set_transformer_dropout(self, attn_dropout, mlp_dropout):
-        self.bottleneck5.set_dropout(attn_dropout, mlp_dropout)
-    
     def load_state(self, path):
         self.load_state_dict(torch.load(path, weights_only=True, map_location=torch.device('cpu')))
 
@@ -258,4 +244,4 @@ class Model_4b_c(Model):
     def load_pretrained(self):
         path = 'models/sony_images/states/sid_bottleneck_transformer_retrained_4b_c.pt'
         super().load_state(path)
-        return path
+        return '4b_c'
