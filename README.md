@@ -33,7 +33,7 @@ The repository includes training and evaluation scripts with extensive configura
 10055.png
 ![](./results/10055.png)
 
-## Key takeaways
+## Key Takeaways
 - Transformer-augmented models slightly outperform similarly sized CNN baselines on standard performance metrics.
 - However, some improvements are not fully captured by these metrics.
 - The global context provided by self-attention leads to more coherent color reconstruction, especially on single-colored surfaces and along object boundaries.
