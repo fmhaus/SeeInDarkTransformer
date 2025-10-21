@@ -1,1 +1,6 @@
-pillow torch tqdm rawpy numpy torchmetrics
+pillow 
+torch 
+tqdm 
+rawpy 
+numpy 
+torchmetrics
