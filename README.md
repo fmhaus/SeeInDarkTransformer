@@ -2,7 +2,7 @@
 
 SeeInDarkTransformer is a Transformer-based adaptation of "Learning to See in the Dark" in CVPR 2018, by Chen Chen, Qifeng Chen, Jia Xu, and Vladlen Koltun.
 [Paper](https://arxiv.org/abs/1805.01934)
-[Github Implementation](https://github.com/cchen156/Learning-to-See-in-the-Dark)
+[Github](https://github.com/cchen156/Learning-to-See-in-the-Dark)
 
 ## Project Overview
 
@@ -35,7 +35,7 @@ The repository includes training and evaluation scripts with extensive configura
 
 ## Setup
 
-- Download the dataset using `download_dataset_sony.sh` or from the dataset creator [here](https://github.com/cchen156/Learning-to-See-in-the-Dark).
+- Download the dataset using `download_dataset_sony.sh` or from the dataset creator [here](https://github.com/cchen156/Learning-to-See-in-the-Dark) and unzip manually.
 - Install required libraries: `pip install -r requirements.txt`
 
 ## Training
@@ -44,7 +44,7 @@ The repository includes training and evaluation scripts with extensive configura
 python train_model.py --model 'sid_bottleneck_transformer_2b' --dataset_folder './dataset/'
 ```
 
-Check out [config.py](./config.py) and [train_model.py](./train_model.py) for more config options.
+Check out [config.py](./config.py) and [train_model.py](./train_model.py) for more config options.  
 Check out [l4.ini](./config/l4.ini) on how to configure device options.
 
 ## Evaluation 
