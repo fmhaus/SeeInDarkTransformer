@@ -153,4 +153,4 @@ if __name__ == '__main__':
     with open(os.path.join(opt.out_folder, f'results_{opt.model}.json'), 'w') as fw:
         fw.write(json.dumps(results))
     
-    print(f"Average PSNR: {results['avg_psnr']}, Average loss {results['avg_loss']}")
+    print(f"Average PSNR: {results['avg_psnr']}, Average SSIM: {results['avg_ssim']}, Average loss {results['avg_loss']}")
