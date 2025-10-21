@@ -8,14 +8,14 @@ SeeInDarkTransformer is a Transformer-based adaptation of "Learning to See in th
 
 The goal is to explore the capabilities of self-attention in capturing spatial dependencies for reconstructing high-quality images.  
 Several CNN-Transformer-hybrid models are implemented in pytorch.
-The models reuse some CNN-layers and weights from "Learning to See in the Dark" and are retrained to adapt to new Transformer elements using the same dataset. 
- This project contains training and evaluation scripts with extensive configuration, as well as tools for benchmarking, side-by-side comparisons, preprocessing and visualization of the training process.
+The models reuse some CNN-layers and weights from "Learning to See in the Dark" and are retrained to adapt to new Transformer elements using the same dataset.  
+This project contains training and evaluation scripts with extensive configuration, as well as tools for benchmarking, side-by-side comparisons, preprocessing and visualization of the training process.
 
 ## Quantitative Comparison
 
 | Feature | Original (CNN-based) | Transformer-adaptation (2B) | Transformer-adaptation (4B) |
 |---------|----------------------|-----------------------------|-----------------------------|
-| Architecture | Convolutional UNet (5 Encoder + 4 Decoder layers) | 4 Conv-Encoder layers, 2 Transformer-Encoder, 4 Conv-Decoder layers | 4 Conv-Encoder layers, 2 Transformer-Encoder, 4 Conv-Decoder layers |
+| Architecture | Convolutional UNet (5 Encoder + 4 Decoder layers) | 4 Conv-Encoder layers, 2 Transformer-Encoder blocks, 4 Conv-Decoder layers | 4 Conv-Encoder layers, 2 Transformer-Encoder blocks, 4 Conv-Decoder layers |
 | Receptive field | Encoder: 248px  (5.83%) Decoder: 296px (6.95%) | Whole image | Whole image |
 | Parameters | 7760268 | 6324620 | 7969932 |
 | Inference time (L4 GPU, single batch, averaged) | 0.131s | 0.132s | 0.137s |
@@ -25,9 +25,12 @@ The models reuse some CNN-layers and weights from "Learning to See in the Dark" 
 
 ## Qualititave Results
 
-![10006.png](./results/10006.png)
-![10030.png](./results/10030.png)
-![10055.png](./results/10055.png)
+10006.png
+![](./results/10006.png)
+10030.png
+![](./results/10030.png)
+10055.png
+![](./results/10055.png)
 
 ## Setup
 
@@ -37,15 +40,16 @@ The models reuse some CNN-layers and weights from "Learning to See in the Dark" 
 ## Training
 
 ```bash
-python train_model.py --model 'sid_bottleneck_transformer_2b'
+python train_model.py --model 'sid_bottleneck_transformer_2b' --dataset_folder './dataset/'
 ```
 
-Check out [config.py](./config.py) and [train_model.py](./train_model.py) for more config options
+Check out [config.py](./config.py) and [train_model.py](./train_model.py) for more config options.
+Check out [l4.ini](./config/l4.ini) on how to configure device options.
 
 ## Evaluation 
 
 ```bash
-python test_model.py --model 'sid_bottleneck_transformer_2b'
+python test_model.py --model 'sid_bottleneck_transformer_2b' --dataset_folder './dataset' --save_images
 ```
 
 ## References
