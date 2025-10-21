@@ -6,9 +6,9 @@ SeeInDarkTransformer is a Transformer-based adaptation of "Learning to See in th
 
 ## Project Overview
 
-This project explores the potential of self-attention mechanisms to capture spatial dependencies for high-quality image reconstruction.
+This project explores the potential of self-attention mechanisms to capture spatial dependencies for high-quality image reconstruction.  
 
-It implements several CNN–Transformer hybrid models using PyTorch. These models leverage CNN layers and pretrained weights from Learning to See in the Dark, and are retrained to incorporate Transformer-based components while using the same dataset.
+It implements several CNN–Transformer hybrid models using PyTorch. These models leverage CNN layers and pretrained weights from Learning to See in the Dark, and are retrained to incorporate Transformer-based components while using the same dataset.  
 
 The repository includes training and evaluation scripts with extensive configuration options, along with tools for benchmarking, side-by-side comparisons, data preprocessing, and visualization of the training process.
 
