@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from PIL import Image
 from tqdm import tqdm
+from torchmetrics.functional import structural_similarity_index_measure as ssim
 from models.sony_images import get_model_class, dataset
 from util import image_util
 import config
@@ -74,6 +75,7 @@ if __name__ == '__main__':
     
     losses = torch.empty((len(dataset_test)), dtype=torch.float32, device=device)
     psnrs = torch.empty((len(dataset_test)), dtype=torch.float32, device=device)
+    ssims = torch.empty((len(dataset_test)), dtype=torch.float32, device=device)
     
     ids = []
     ratios = []
@@ -102,10 +104,12 @@ if __name__ == '__main__':
             
             loss = criterion(out_images, gt_images).mean(dim=[1, 2, 3])
             psnr = image_util.batch_psnr(out_images, gt_images)
+            ssim_scores = ssim(out_images, gt_images, data_range=1.0, reduction='none')
             
             index = batch_idx*dataloader_batch_size
             losses[index:index + batch_size] = loss
             psnrs[index:index + batch_size] = psnr
+            ssims[index:index + batch_size] = ssim_scores
             
             for i in range(batch_size):
                 ids.append(meta['id'][i])
@@ -138,13 +142,15 @@ if __name__ == '__main__':
         'model_state': model_state,
         'avg_psnr': psnrs.mean().item(),
         'avg_loss': losses.mean().item(),
+        'avg_ssim': ssims.mean().item(),
         'losses': losses.tolist(),
         'psnrs': psnrs.tolist(),
+        'ssims': ssims.tolist(),
         'ids': ids,
         'ratios': ratios
     }
     
-    with open(os.path.join(opt.out_folder, 'results.json'), 'w') as fw:
+    with open(os.path.join(opt.out_folder, f'results_{opt.model}.json'), 'w') as fw:
         fw.write(json.dumps(results))
     
     print(f"Average PSNR: {results['avg_psnr']}, Average loss {results['avg_loss']}")
