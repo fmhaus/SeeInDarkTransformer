@@ -24,7 +24,7 @@ The repository includes training and evaluation scripts with extensive configura
 | PSNR (average) | 28.54 dB | 29.60 dB | 29.64 dB |
 | SSIM (average) | 0.80 | 0.81 | 0.81 | 
 
-## Qualititave Results
+## Visual Comparisons
 
 10006.png
 ![](./results/10006.png)
