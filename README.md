@@ -54,5 +54,5 @@ python test_model.py --model 'sid_bottleneck_transformer_2b' --dataset_folder '.
 
 ## References
 
-Chen Chen et al., *Learning to See in the Dark* (2018).[https://arxiv.org/abs/1805.01934](https://arxiv.org/abs/1805.01934)
+Chen Chen et al., *Learning to See in the Dark* (2018).[https://arxiv.org/abs/1805.01934](https://arxiv.org/abs/1805.01934)  
 Dosovitskiy et al., *An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale* (2021). [https://arxiv.org/abs/2010.11929](https://arxiv.org/abs/2010.11929)
