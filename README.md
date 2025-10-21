@@ -33,6 +33,11 @@ The repository includes training and evaluation scripts with extensive configura
 10055.png
 ![](./results/10055.png)
 
+## Key takeaways
+- Transformer-augmented models slightly outperform similarly sized CNN baselines on standard performance metrics.
+- However, some improvements are not fully captured by these metrics.
+- The global context provided by self-attention leads to more coherent color reconstruction, especially on single-colored surfaces and along object boundaries.
+
 ## Setup
 
 - Download the dataset using `download_dataset_sony.sh` or from the dataset creator [here](https://github.com/cchen156/Learning-to-See-in-the-Dark) and unzip manually.
