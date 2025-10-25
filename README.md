@@ -17,11 +17,12 @@ The repository includes training and evaluation scripts with extensive configura
 
 ## Visual Comparisons
 
-10006.png
+*Top left - input image (scaled to ground truth brightness)*
+*Top right - long exposure ground truth image*
+*Bottom left - reconstruction of "Learning to See in the Dark" (2018)*
+*Bottom right - reconstruction of a transformer-augmented model (4B)*
 ![](./results/10006.png)
-10030.png
 ![](./results/10030.png)
-10055.png
 ![](./results/10055.png)
 
 ## Quantitative Comparison
